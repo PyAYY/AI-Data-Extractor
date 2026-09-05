@@ -413,6 +413,18 @@
     </div>
 
     <script>
+        const API_BASE = "https://service-production-50ff.up.railway.app";
+
+        // Helper function to handle response parsing and catch non-JSON/HTML errors
+        async function parseJsonResponse(res) {
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await res.text();
+                throw new Error(`Server returned status ${res.status} (${res.statusText}). Non-JSON response received.`);
+            }
+            return await res.json();
+        }
+
         // Global Auth State
         let jwtToken = localStorage.getItem("jwt_token") || "";
         let userApiKey = localStorage.getItem("user_api_key") || "";
@@ -468,12 +480,12 @@
             const password = document.getElementById('reg-password').value;
 
             try {
-                const res = await fetch('/api/auth/register', {
+                const res = await fetch(`${API_BASE}/api/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
-                const data = await res.json();
+                const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Registration failed');
                 
                 showAlert('reg-alert', `Registered! Created Key: ${data.api_key}`, false);
@@ -491,12 +503,12 @@
             const password = document.getElementById('login-password').value;
 
             try {
-                const res = await fetch('/api/auth/login', {
+                const res = await fetch(`${API_BASE}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
-                const data = await res.json();
+                const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Login failed');
 
                 jwtToken = data.access_token;
@@ -527,8 +539,8 @@
             }
 
             try {
-                const res = await fetch('/api/user/status', { headers });
-                const data = await res.json();
+                const res = await fetch(`${API_BASE}/api/user/status`, { headers });
+                const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to fetch status');
 
                 updateGlobalUserUI(data.email, data.tier, data.credits_remaining, data.api_key, jwtToken);
@@ -539,11 +551,11 @@
         }
 
         function updateGlobalUserUI(email, tier, credits, apiKey, token) {
-            document.getElementById('user-tier-badge').innerText = tier.toUpperCase();
-            document.getElementById('user-credits-val').innerText = credits;
-            document.getElementById('account-email').innerText = email;
-            document.getElementById('account-tier').innerText = tier;
-            document.getElementById('account-credits').innerText = credits;
+            document.getElementById('user-tier-badge').innerText = (tier || 'GUEST').toUpperCase();
+            document.getElementById('user-credits-val').innerText = credits ?? 0;
+            document.getElementById('account-email').innerText = email || "Not logged in";
+            document.getElementById('account-tier').innerText = tier || "-";
+            document.getElementById('account-credits').innerText = credits ?? "-";
             document.getElementById('account-api-key').value = apiKey || "";
             document.getElementById('account-jwt').value = token ? `Bearer ${token}` : "";
         }
@@ -580,13 +592,13 @@
             outputPre.innerText = "Processing extraction via Gemini Flash 2.5...";
 
             try {
-                const res = await fetch(`/api/extract/${taskType}`, {
+                const res = await fetch(`${API_BASE}/api/extract/${taskType}`, {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({ image_base64: base64ImageData })
                 });
                 
-                const data = await res.json();
+                const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Extraction request failed');
 
                 outputPre.innerText = JSON.stringify(data, null, 2);
@@ -610,9 +622,9 @@
             const tier = document.getElementById('gen-tier').value;
 
             try {
-                const url = `/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}&email=${encodeURIComponent(email)}&credits=${credits}&tier=${tier}`;
+                const url = `${API_BASE}/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}&email=${encodeURIComponent(email)}&credits=${credits}&tier=${tier}`;
                 const res = await fetch(url, { method: 'POST' });
-                const data = await res.json();
+                const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to generate key');
 
                 showAlert('admin-gen-alert', `Generated Key: ${data.api_key}`, false);
@@ -631,12 +643,12 @@
             const tier = document.getElementById('update-tier').value;
 
             try {
-                const res = await fetch('/api/admin/user/update', {
+                const res = await fetch(`${API_BASE}/api/admin/user/update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ admin_secret: secret, target_api_key, credits, tier })
                 });
-                const data = await res.json();
+                const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to update user');
 
                 showAlert('admin-update-alert', 'User successfully updated!', false);
@@ -652,8 +664,8 @@
             const tableBody = document.getElementById('admin-users-table');
 
             try {
-                const res = await fetch(`/api/admin/users?admin_secret=${encodeURIComponent(secret)}`);
-                const data = await res.json();
+                const res = await fetch(`${API_BASE}/api/admin/users?admin_secret=${encodeURIComponent(secret)}`);
+                const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to fetch users');
 
                 tableBody.innerHTML = '';
