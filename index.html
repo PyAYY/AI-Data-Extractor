@@ -3,696 +3,1320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Function AI Extraction Micro-SaaS</title>
+    <title>AI Extraction Platform</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #0b1221;
             --border-color: #334155;
+            --border-hover: #475569;
             --primary: #6366f1;
             --primary-hover: #4f46e5;
-            --text-main: #f8fafc;
+            --primary-glow: rgba(99, 102, 241, 0.3);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
             --text-muted: #94a3b8;
             --accent-green: #10b981;
+            --accent-green-bg: rgba(16, 185, 129, 0.15);
             --accent-red: #ef4444;
+            --accent-red-bg: rgba(239, 68, 68, 0.15);
+            --accent-amber: #f59e0b;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            padding: 24px;
-            max-width: 1200px;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1f35 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
             margin: 0 auto;
         }
 
+        /* Header */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
+            padding: 20px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             margin-bottom: 24px;
+            box-shadow: var(--shadow);
         }
 
-        h1 {
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .brand h1 {
             font-size: 1.5rem;
             font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .nav-tabs {
+        .user-status {
             display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
+            align-items: center;
+            gap: 16px;
         }
+
+        .credits-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .credits-pill strong {
+            color: var(--accent-green);
+            font-size: 1.1rem;
+        }
+
+        .tier-badge {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tier-pro { background: var(--primary-glow); color: var(--primary); border: 1px solid var(--primary); }
+        .tier-enterprise { background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); border: 1px solid var(--accent-amber); }
+        .tier-free { background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-color); }
+        .tier-guest { background: var(--accent-red-bg); color: var(--accent-red); border: 1px solid var(--accent-red); }
+
+        /* Navigation */
+        .nav-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            padding: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .nav-container::-webkit-scrollbar { display: none; }
 
         .tab-btn {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
             color: var(--text-muted);
-            padding: 10px 18px;
+            font-weight: 600;
+            font-size: 0.9rem;
             border-radius: 8px;
             cursor: pointer;
-            font-weight: 600;
             transition: all 0.2s;
+            white-space: nowrap;
+            position: relative;
         }
 
-        .tab-btn.active, .tab-btn:hover {
-            color: var(--text-main);
-            border-color: var(--primary);
-            background: rgba(99, 102, 241, 0.1);
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.05);
         }
 
-        .tab-content {
-            display: none;
+        .tab-btn.active {
+            color: var(--text-primary);
+            background: var(--primary);
+            box-shadow: 0 4px 12px var(--primary-glow);
         }
 
-        .tab-content.active {
-            display: block;
+        .tab-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Content Grid */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
             gap: 20px;
         }
 
         .card {
-            background-color: var(--panel-bg);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .card h2 {
-            font-size: 1.2rem;
-            margin-bottom: 16px;
-            color: var(--text-main);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .form-group {
-            margin-bottom: 16px;
-        }
+        /* Form Elements */
+        .form-group { margin-bottom: 20px; }
 
         label {
             display: block;
             font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 6px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
         }
 
-        input, select, button, textarea {
+        input, select, textarea {
             width: 100%;
-            padding: 10px 12px;
-            border-radius: 6px;
+            padding: 12px 14px;
             border: 1px solid var(--border-color);
-            background: #0f172a;
-            color: var(--text-main);
-            font-size: 0.9rem;
+            border-radius: 10px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.2s;
         }
 
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
         }
 
+        input::placeholder, textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        input:read-only, textarea:read-only {
+            background: rgba(15, 23, 42, 0.5);
+            cursor: default;
+        }
+
+        /* Buttons */
         button {
-            background-color: var(--primary);
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary);
             color: white;
             font-weight: 600;
+            font-size: 0.95rem;
             cursor: pointer;
-            border: none;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        button:hover {
-            background-color: var(--primary-hover);
+        button:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-glow);
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background: var(--border-color);
+            border-color: var(--border-hover);
+        }
+
+        button.danger {
+            background: var(--accent-red);
+        }
+
+        button.danger:hover:not(:disabled) {
+            background: #dc2626;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        button.small {
+            padding: 6px 12px;
             font-size: 0.8rem;
-            font-weight: 600;
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--accent-green);
         }
 
+        /* File Upload */
+        .file-drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            background: var(--bg-tertiary);
+        }
+
+        .file-drop-zone:hover, .file-drop-zone.drag-over {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .file-drop-zone i {
+            font-size: 48px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .file-drop-zone p {
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .file-drop-zone .hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .file-input { display: none; }
+
+        .preview-container {
+            margin-top: 16px;
+            position: relative;
+            display: none;
+        }
+
+        .preview-container.active { display: block; }
+
+        .preview-img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+
+        .preview-remove {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Output */
         pre {
-            background: #090d16;
-            padding: 12px;
-            border-radius: 6px;
+            background: var(--bg-tertiary);
+            padding: 16px;
+            border-radius: 10px;
             overflow-x: auto;
             font-size: 0.85rem;
             border: 1px solid var(--border-color);
             color: #38bdf8;
-            max-height: 300px;
+            max-height: 400px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            line-height: 1.5;
         }
 
-        .preview-img {
-            max-width: 100%;
-            max-height: 200px;
-            border-radius: 6px;
-            margin-top: 10px;
-            display: none;
+        .output-placeholder {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 12px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
         }
 
         th, td {
             text-align: left;
-            padding: 8px 10px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border-color);
         }
 
         th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        /* Toasts */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success { background: var(--accent-green); }
+        .toast.error { background: var(--accent-red); }
+        .toast.info { background: var(--primary); }
+
+        .toast-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Input Groups */
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-group input { flex: 1; }
+        .input-group button { width: auto; white-space: nowrap; }
+
+        /* Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
             color: var(--text-muted);
         }
 
-        .alert {
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            margin-bottom: 12px;
-            display: none;
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
         }
 
-        .alert-error {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--accent-red);
-            border: 1px solid var(--accent-red);
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-container {
+                padding: 4px;
+            }
+
+            .tab-btn {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }
+
+            body { padding: 12px; }
         }
 
-        .alert-success {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--accent-green);
-            border: 1px solid var(--accent-green);
-        }
+        /* Utility */
+        .hidden { display: none !important; }
+        .mt-4 { margin-top: 16px; }
+        .mb-4 { margin-bottom: 16px; }
+        .text-muted { color: var(--text-muted); }
+        .text-success { color: var(--accent-green); }
+        .text-error { color: var(--accent-red); }
     </style>
 </head>
 <body>
-
-    <header>
-        <h1>AI Extraction SaaS</h1>
-        <div id="global-status">
-            <span class="status-badge" id="user-tier-badge">GUEST</span>
-            <span style="margin-left: 8px; font-size: 0.9rem; color: var(--text-muted);">
-                Credits: <strong id="user-credits-val" style="color: var(--text-main);">0</strong>
-            </span>
-        </div>
-    </header>
-
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('auth-tab', event)">Authentication</button>
-        <button class="tab-btn" onclick="switchTab('extract-tab', event)">Extraction Tool</button>
-        <button class="tab-btn" onclick="switchTab('user-tab', event)">User Account</button>
-        <button class="tab-btn" onclick="switchTab('admin-tab', event)">Admin Console</button>
-    </div>
-
-    <!-- AUTHENTICATION TAB -->
-    <div id="auth-tab" class="tab-content active">
-        <div class="grid">
-            <div class="card">
-                <h2>Register Account</h2>
-                <div id="reg-alert" class="alert"></div>
-                <form id="reg-form" onsubmit="handleRegister(event)">
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" id="reg-email" required placeholder="user@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="reg-password" required placeholder="••••••••">
-                    </div>
-                    <button type="submit">Register</button>
-                </form>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <div class="brand-icon">⚡</div>
+                <h1>AI Extraction Platform</h1>
             </div>
-
-            <div class="card">
-                <h2>User Login</h2>
-                <div id="login-alert" class="alert"></div>
-                <form id="login-form" onsubmit="handleLogin(event)">
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" id="login-email" required placeholder="user@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="login-password" required placeholder="••••••••">
-                    </div>
-                    <button type="submit">Login</button>
-                </form>
+            <div class="user-status">
+                <div class="credits-pill">
+                    <span>Credits:</span>
+                    <strong id="user-credits-val">0</strong>
+                </div>
+                <span class="tier-badge tier-guest" id="user-tier-badge">GUEST</span>
+                <button id="logout-btn" class="secondary small hidden" onclick="handleLogout()">Logout</button>
             </div>
-        </div>
-    </div>
+        </header>
 
-    <!-- EXTRACTION TAB -->
-    <div id="extract-tab" class="tab-content">
-        <div class="grid">
-            <div class="card">
-                <h2>Multimodal AI Document Extraction</h2>
-                <div id="extract-alert" class="alert"></div>
-                
-                <div class="form-group">
-                    <label>Extraction Task Type</label>
-                    <select id="extract-type">
-                        <option value="invoice">Invoice Extraction</option>
-                        <option value="receipt">Store Receipt Extraction</option>
-                        <option value="business-card">Business Card Extraction</option>
-                        <option value="image-description">Detailed Image Description</option>
-                    </select>
-                </div>
+        <nav class="nav-container">
+            <button class="tab-btn active" onclick="switchTab('auth-tab')">Authentication</button>
+            <button class="tab-btn" onclick="switchTab('extract-tab')" id="extract-tab-btn">Extraction</button>
+            <button class="tab-btn" onclick="switchTab('user-tab')" id="user-tab-btn">Account</button>
+            <button class="tab-btn" onclick="switchTab('admin-tab')">Admin</button>
+        </nav>
 
-                <div class="form-group">
-                    <label>Auth Header Method</label>
-                    <select id="extract-auth-method">
-                        <option value="bearer">JWT Bearer Token (Logged in)</option>
-                        <option value="apikey">X-API-Key Header</option>
-                    </select>
-                </div>
-
-                <div class="form-group" id="manual-key-group" style="display: none;">
-                    <label>Manual API Key</label>
-                    <input type="text" id="extract-manual-key" placeholder="usr_...">
-                </div>
-
-                <div class="form-group">
-                    <label>Upload Document Image</label>
-                    <input type="file" id="extract-file" accept="image/*" onchange="previewImage(event)">
-                    <img id="image-preview" class="preview-img" alt="Document Preview">
-                </div>
-
-                <button onclick="handleExtraction()">Run AI Extraction</button>
-            </div>
-
-            <div class="card">
-                <h2>Extraction Result Output</h2>
-                <pre id="extract-output">// JSON response will appear here after process completion...</pre>
-            </div>
-        </div>
-    </div>
-
-    <!-- USER ACCOUNT TAB -->
-    <div id="user-tab" class="tab-content">
-        <div class="card">
-            <h2>Account Details & API Status</h2>
-            <div id="user-alert" class="alert"></div>
-            <button onclick="fetchUserStatus()" style="width: auto; margin-bottom: 16px;">Refresh Status</button>
-            
+        <!-- AUTHENTICATION -->
+        <div id="auth-tab" class="tab-content active">
             <div class="grid">
-                <div>
-                    <p><strong>Email:</strong> <span id="account-email">Not logged in</span></p>
-                    <p style="margin-top: 8px;"><strong>Tier:</strong> <span id="account-tier">-</span></p>
-                    <p style="margin-top: 8px;"><strong>Remaining Credits:</strong> <span id="account-credits">-</span></p>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📝 Create Account</h2>
+                    </div>
+                    <form id="reg-form" onsubmit="handleRegister(event)">
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" id="reg-email" required placeholder="you@company.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="reg-password" required minlength="8" placeholder="••••••••">
+                            <small class="text-muted" style="display:block;margin-top:6px;">Minimum 8 characters</small>
+                        </div>
+                        <button type="submit" id="reg-btn">
+                            <span>Create Account</span>
+                        </button>
+                    </form>
                 </div>
-                <div>
-                    <label>Active API Key:</label>
-                    <input type="text" id="account-api-key" readonly placeholder="usr_...">
-                    <label style="margin-top: 12px;">JWT Bearer Token:</label>
-                    <textarea id="account-jwt" rows="3" readonly placeholder="Bearer Token..."></textarea>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🔐 Sign In</h2>
+                    </div>
+                    <form id="login-form" onsubmit="handleLogin(event)">
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" id="login-email" required placeholder="you@company.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="login-password" required placeholder="••••••••">
+                        </div>
+                        <button type="submit" id="login-btn">
+                            <span>Sign In</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXTRACTION -->
+        <div id="extract-tab" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📄 Document Extraction</h2>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Task Type</label>
+                        <select id="extract-type">
+                            <option value="invoice">Invoice Processing</option>
+                            <option value="receipt">Receipt Analysis</option>
+                            <option value="business-card">Business Card OCR</option>
+                            <option value="image-description">Image Description</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Authentication Method</label>
+                        <select id="extract-auth-method" onchange="toggleAuthMethod()">
+                            <option value="bearer">JWT Session (Logged In)</option>
+                            <option value="apikey">API Key</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group hidden" id="manual-key-group">
+                        <label>API Key</label>
+                        <div class="input-group">
+                            <input type="password" id="extract-manual-key" placeholder="usr_...">
+                            <button type="button" class="secondary small" onclick="toggleKeyVisibility('extract-manual-key')">👁</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Upload Document</label>
+                        <div class="file-drop-zone" id="drop-zone" onclick="document.getElementById('extract-file').click()">
+                            <span style="font-size: 32px;">📁</span>
+                            <p>Click or drag & drop image here</p>
+                            <span class="hint">Supports: JPG, PNG, WEBP (max 10MB)</span>
+                        </div>
+                        <input type="file" id="extract-file" class="file-input" accept="image/*" onchange="handleFileSelect(event)">
+                        
+                        <div class="preview-container" id="preview-container">
+                            <img id="image-preview" class="preview-img" alt="Preview">
+                            <button class="preview-remove" onclick="clearFile()" title="Remove">×</button>
+                        </div>
+                    </div>
+
+                    <button onclick="handleExtraction()" id="extract-btn">
+                        <span>Process Document</span>
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📊 Results</h2>
+                        <button class="secondary small" onclick="copyOutput()" title="Copy JSON">📋 Copy</button>
+                    </div>
+                    <pre id="extract-output"><span class="output-placeholder">// Results will appear here...</span></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- USER ACCOUNT -->
+        <div id="user-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>👤 Account Details</h2>
+                    <button onclick="fetchUserStatus()" class="secondary small">🔄 Refresh</button>
+                </div>
+                
+                <div class="grid" style="margin-bottom: 24px;">
+                    <div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="text" id="account-email" readonly placeholder="Not logged in">
+                        </div>
+                        <div class="form-group">
+                            <label>Subscription Tier</label>
+                            <input type="text" id="account-tier" readonly placeholder="-">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label>Available Credits</label>
+                            <input type="text" id="account-credits" readonly placeholder="-">
+                        </div>
+                        <div class="form-group">
+                            <label>Account Created</label>
+                            <input type="text" id="account-created" readonly placeholder="-">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>API Key</label>
+                    <div class="input-group">
+                        <input type="password" id="account-api-key" readonly placeholder="Login to view">
+                        <button class="secondary" onclick="copyToClipboard('account-api-key')">📋 Copy</button>
+                        <button class="secondary" onclick="toggleKeyVisibility('account-api-key')">👁 Show</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>JWT Bearer Token</label>
+                    <div class="input-group">
+                        <textarea id="account-jwt" rows="2" readonly placeholder="Login to view"></textarea>
+                        <button class="secondary" onclick="copyToClipboard('account-jwt')" style="align-self: stretch;">📋 Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN -->
+        <div id="admin-tab" class="tab-content">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>🔑 Admin Access</h2>
+                </div>
+                <div class="form-group">
+                    <label>Admin Secret Key</label>
+                    <div class="input-group">
+                        <input type="password" id="admin-secret" placeholder="Enter admin secret...">
+                        <button class="secondary" onclick="toggleKeyVisibility('admin-secret')">👁</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>➕ Generate API Key</h2>
+                    </div>
+                    <form onsubmit="handleAdminGenKey(event)">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="gen-email" required placeholder="newuser@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Initial Credits</label>
+                            <input type="number" id="gen-credits" value="100" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Tier</label>
+                            <select id="gen-tier">
+                                <option value="pro">Pro</option>
+                                <option value="free">Free</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="admin-gen-btn">Generate Key</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>✏️ Update User</h2>
+                    </div>
+                    <form onsubmit="handleAdminUpdateUser(event)">
+                        <div class="form-group">
+                            <label>Target API Key</label>
+                            <input type="text" id="update-target-key" required placeholder="usr_...">
+                        </div>
+                        <div class="form-group">
+                            <label>New Credits</label>
+                            <input type="number" id="update-credits" required min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>New Tier</label>
+                            <select id="update-tier">
+                                <option value="pro">Pro</option>
+                                <option value="free">Free</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="admin-update-btn">Update User</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2>👥 System Users</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="handleAdminListUsers()" class="secondary small">🔄 Refresh</button>
+                        <button onclick="exportUsers()" class="secondary small">📥 Export CSV</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>API Key</th>
+                                <th>Tier</th>
+                                <th>Credits</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-table">
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <div class="empty-state-icon">📊</div>
+                                    <p>Click refresh to load user data</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ADMIN CONSOLE TAB -->
-    <div id="admin-tab" class="tab-content">
-        <div class="card" style="margin-bottom: 20px;">
-            <h2>Admin Authentication</h2>
-            <div class="form-group">
-                <label>Admin Secret Key</label>
-                <input type="password" id="admin-secret" value="admin-secret-master-key">
-            </div>
-        </div>
-
-        <div class="grid">
-            <div class="card">
-                <h2>Generate New API Key</h2>
-                <div id="admin-gen-alert" class="alert"></div>
-                <form onsubmit="handleAdminGenKey(event)">
-                    <div class="form-group">
-                        <label>Target Email</label>
-                        <input type="email" id="gen-email" required value="gen_user@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Initial Credits</label>
-                        <input type="number" id="gen-credits" value="100">
-                    </div>
-                    <div class="form-group">
-                        <label>Account Tier</label>
-                        <select id="gen-tier">
-                            <option value="pro">Pro</option>
-                            <option value="free">Free</option>
-                            <option value="enterprise">Enterprise</option>
-                        </select>
-                    </div>
-                    <button type="submit">Generate Key</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>Update Existing User</h2>
-                <div id="admin-update-alert" class="alert"></div>
-                <form onsubmit="handleAdminUpdateUser(event)">
-                    <div class="form-group">
-                        <label>Target User API Key</label>
-                        <input type="text" id="update-target-key" required placeholder="usr_...">
-                    </div>
-                    <div class="form-group">
-                        <label>New Credits Count</label>
-                        <input type="number" id="update-credits" required value="250">
-                    </div>
-                    <div class="form-group">
-                        <label>New Account Tier</label>
-                        <select id="update-tier">
-                            <option value="pro">Pro</option>
-                            <option value="free">Free</option>
-                            <option value="enterprise">Enterprise</option>
-                        </select>
-                    </div>
-                    <button type="submit">Update User</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card" style="margin-top: 20px;">
-            <h2>All System Users</h2>
-            <button onclick="handleAdminListUsers()" style="width: auto; margin-bottom: 12px;">Fetch Users List</button>
-            <div id="admin-list-alert" class="alert"></div>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Email</th>
-                            <th>API Key</th>
-                            <th>Tier</th>
-                            <th>Credits</th>
-                            <th>Created At</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-users-table">
-                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Click "Fetch Users List" to view data</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
 
     <script>
+        // Configuration
         const API_BASE = "https://service-production-50ff.up.railway.app";
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+        // State
+        let jwtToken = localStorage.getItem("jwt_token") || "";
+        let userApiKey = localStorage.getItem("user_api_key") || "";
+        let base64ImageData = "";
+        let currentUserData = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDragAndDrop();
+            if (jwtToken || userApiKey) {
+                fetchUserStatus();
+            }
+        });
+
+        // Toast Notifications
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = { success: '✓', error: '✕', info: 'ℹ' };
+            toast.innerHTML = `
+                <span>${icons[type]}</span>
+                <span>${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            container.appendChild(toast);
+            
+            if (duration > 0) {
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Loading States
+        function setLoading(btnId, loading = true) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            
+            if (loading) {
+                btn.dataset.originalText = btn.innerHTML;
+                btn.innerHTML = '<div class="spinner"></div><span>Processing...</span>';
+                btn.disabled = true;
+            } else {
+                btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
+                btn.disabled = false;
+            }
+        }
+
+        // API Response Handler
         async function parseJsonResponse(res) {
             const contentType = res.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
                 const text = await res.text();
-                throw new Error(`Server returned status ${res.status} (${res.statusText}). Non-JSON response received.`);
+                throw new Error(`Server error (${res.status}): Non-JSON response`);
             }
             return await res.json();
         }
 
-        // Global Auth State
-        let jwtToken = localStorage.getItem("jwt_token") || "";
-        let userApiKey = localStorage.getItem("user_api_key") || "";
-        let base64ImageData = "";
-
-        // UI Helpers
-        function switchTab(tabId, evt) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            if (evt && evt.currentTarget) {
-                evt.currentTarget.classList.add('active');
-            }
-        }
-
-        function showAlert(elementId, message, isError = true) {
-            const el = document.getElementById(elementId);
-            el.className = `alert ${isError ? 'alert-error' : 'alert-success'}`;
-            el.innerText = message;
-            el.style.display = 'block';
-        }
-
-        function clearAlert(elementId) {
-            const el = document.getElementById(elementId);
-            el.style.display = 'none';
-        }
-
-        document.getElementById('extract-auth-method').addEventListener('change', (e) => {
-            const manualGroup = document.getElementById('manual-key-group');
-            manualGroup.style.display = e.target.value === 'apikey' ? 'block' : 'none';
-        });
-
-        function previewImage(event) {
-            const file = event.target.files[0];
-            const img = document.getElementById('image-preview');
+        // File Handling
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
             
-            if (!file) {
-                img.src = "";
-                img.style.display = "none";
-                base64ImageData = "";
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+            });
+            
+            dropZone.addEventListener('drop', handleDrop, false);
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) handleFile(files[0]);
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast('Please select an image file', 'error');
                 return;
             }
-
+            
+            if (file.size > MAX_FILE_SIZE) {
+                showToast('File too large. Maximum 10MB allowed.', 'error');
+                return;
+            }
+            
             const reader = new FileReader();
-            reader.onload = function(e) {
-                img.src = e.target.result;
-                img.style.display = 'block';
+            reader.onload = (e) => {
                 base64ImageData = e.target.result.split(',')[1];
+                document.getElementById('image-preview').src = e.target.result;
+                document.getElementById('preview-container').classList.add('active');
+                document.getElementById('drop-zone').style.display = 'none';
             };
             reader.readAsDataURL(file);
         }
 
-        // --- API INTEGRATIONS ---
+        function clearFile() {
+            base64ImageData = "";
+            document.getElementById('extract-file').value = "";
+            document.getElementById('preview-container').classList.remove('active');
+            document.getElementById('drop-zone').style.display = 'block';
+        }
 
+        // Auth Method Toggle
+        function toggleAuthMethod() {
+            const method = document.getElementById('extract-auth-method').value;
+            document.getElementById('manual-key-group').classList.toggle('hidden', method === 'bearer');
+        }
+
+        // Visibility Toggle
+        function toggleKeyVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // Clipboard
+        async function copyToClipboard(elementId) {
+            const el = document.getElementById(elementId);
+            try {
+                await navigator.clipboard.writeText(el.value);
+                showToast('Copied to clipboard!', 'success', 2000);
+            } catch (err) {
+                showToast('Failed to copy', 'error');
+            }
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('extract-output');
+            const text = output.innerText;
+            if (text.includes('Results will appear')) return;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('JSON copied!', 'success', 2000);
+            });
+        }
+
+        // API Functions
         async function handleRegister(e) {
             e.preventDefault();
-            clearAlert('reg-alert');
-            const email = document.getElementById('reg-email').value;
-            const password = document.getElementById('reg-password').value;
-
+            setLoading('reg-btn', true);
+            
             try {
                 const res = await fetch(`${API_BASE}/api/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({
+                        email: document.getElementById('reg-email').value,
+                        password: document.getElementById('reg-password').value
+                    })
                 });
+                
                 const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Registration failed');
                 
-                showAlert('reg-alert', `Registered! Created Key: ${data.api_key}`, false);
+                showToast(`Account created! API Key: ${data.api_key.substring(0, 20)}...`, 'success', 8000);
                 document.getElementById('reg-form').reset();
+                
+                // Auto-fill login
+                document.getElementById('login-email').value = document.getElementById('reg-email').value;
+                
             } catch (err) {
-                showAlert('reg-alert', err.message, true);
+                showToast(err.message, 'error');
+            } finally {
+                setLoading('reg-btn', false);
             }
         }
 
         async function handleLogin(e) {
             e.preventDefault();
-            clearAlert('login-alert');
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-
+            setLoading('login-btn', true);
+            
             try {
                 const res = await fetch(`${API_BASE}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({
+                        email: document.getElementById('login-email').value,
+                        password: document.getElementById('login-password').value
+                    })
                 });
+                
                 const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Login failed');
-
+                
                 jwtToken = data.access_token;
                 userApiKey = data.api_key;
                 localStorage.setItem("jwt_token", jwtToken);
                 localStorage.setItem("user_api_key", userApiKey);
-
-                showAlert('login-alert', 'Login successful!', false);
-                updateGlobalUserUI(data.email, data.tier, data.credits ?? data.credits_remaining, data.api_key, data.access_token);
+                
+                currentUserData = data;
+                updateGlobalUserUI(data);
+                showToast('Welcome back!', 'success');
+                
+                // Switch to extraction tab
+                switchTab('extract-tab');
+                
             } catch (err) {
-                showAlert('login-alert', err.message, true);
+                showToast(err.message, 'error');
+            } finally {
+                setLoading('login-btn', false);
             }
         }
 
+        function handleLogout() {
+            jwtToken = "";
+            userApiKey = "";
+            currentUserData = null;
+            localStorage.removeItem("jwt_token");
+            localStorage.removeItem("user_api_key");
+            
+            updateGlobalUserUI({ tier: 'guest', credits: 0 });
+            showToast('Logged out successfully', 'info');
+            switchTab('auth-tab');
+        }
+
         async function fetchUserStatus() {
-            clearAlert('user-alert');
             if (!jwtToken && !userApiKey) {
-                showAlert('user-alert', 'No authentication token or API Key available. Please login first.');
+                showToast('Please login first', 'error');
                 return;
             }
-
+            
             const headers = {};
-            if (jwtToken) {
-                headers['Authorization'] = `Bearer ${jwtToken}`;
-            } else {
-                headers['X-API-Key'] = userApiKey;
-            }
-
+            if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
+            else headers['X-API-Key'] = userApiKey;
+            
             try {
                 const res = await fetch(`${API_BASE}/api/user/status`, { headers });
                 const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to fetch status');
-
-                updateGlobalUserUI(data.email, data.tier, data.credits_remaining ?? data.credits, data.api_key, jwtToken);
-                showAlert('user-alert', 'Account status updated!', false);
+                
+                currentUserData = { ...data, api_key: data.api_key || userApiKey };
+                updateGlobalUserUI(currentUserData);
+                showToast('Account refreshed', 'success', 2000);
+                
             } catch (err) {
-                showAlert('user-alert', err.message, true);
+                showToast(err.message, 'error');
+                if (err.message.includes('401') || err.message.includes('403')) {
+                    handleLogout();
+                }
             }
         }
 
-        function updateGlobalUserUI(email, tier, credits, apiKey, token) {
-            document.getElementById('user-tier-badge').innerText = (tier || 'GUEST').toUpperCase();
-            document.getElementById('user-credits-val').innerText = credits ?? 0;
-            document.getElementById('account-email').innerText = email || "Not logged in";
-            document.getElementById('account-tier').innerText = tier || "-";
-            document.getElementById('account-credits').innerText = credits ?? "-";
-            document.getElementById('account-api-key').value = apiKey || "";
-            document.getElementById('account-jwt').value = token ? `Bearer ${token}` : "";
+        function updateGlobalUserUI(data) {
+            const tier = (data.tier || 'guest').toLowerCase();
+            const credits = data.credits ?? data.credits_remaining ?? 0;
+            
+            // Update header
+            document.getElementById('user-tier-badge').className = `tier-badge tier-${tier}`;
+            document.getElementById('user-tier-badge').textContent = tier;
+            document.getElementById('user-credits-val').textContent = credits.toLocaleString();
+            
+            // Update account tab
+            document.getElementById('account-email').value = data.email || 'Not logged in';
+            document.getElementById('account-tier').value = (data.tier || '-').toUpperCase();
+            document.getElementById('account-credits').value = credits.toLocaleString();
+            document.getElementById('account-created').value = data.created_at ? new Date(data.created_at).toLocaleDateString() : '-';
+            document.getElementById('account-api-key').value = data.api_key || '';
+            document.getElementById('account-jwt').value = jwtToken ? `Bearer ${jwtToken}` : '';
+            
+            // Show/hide logout
+            document.getElementById('logout-btn').classList.toggle('hidden', !jwtToken);
+            
+            // Enable/disable tabs
+            const hasAuth = !!(jwtToken || userApiKey);
+            document.getElementById('extract-tab-btn').disabled = !hasAuth;
+            document.getElementById('user-tab-btn').disabled = !hasAuth;
         }
 
         async function handleExtraction() {
-            clearAlert('extract-alert');
-            const outputPre = document.getElementById('extract-output');
-            const taskType = document.getElementById('extract-type').value;
-            const authMethod = document.getElementById('extract-auth-method').value;
-            const manualKey = document.getElementById('extract-manual-key').value;
-
             if (!base64ImageData) {
-                showAlert('extract-alert', 'Please select an image file first.');
+                showToast('Please upload an image first', 'error');
                 return;
             }
-
+            
+            const authMethod = document.getElementById('extract-auth-method').value;
             const headers = { 'Content-Type': 'application/json' };
+            
             if (authMethod === 'bearer') {
                 if (!jwtToken) {
-                    showAlert('extract-alert', 'No active JWT session. Please log in or use X-API-Key.');
+                    showToast('No active session. Please login.', 'error');
                     return;
                 }
                 headers['Authorization'] = `Bearer ${jwtToken}`;
             } else {
-                const keyToUse = manualKey || userApiKey;
-                if (!keyToUse) {
-                    showAlert('extract-alert', 'Please enter an API Key or log in.');
+                const key = document.getElementById('extract-manual-key').value || userApiKey;
+                if (!key) {
+                    showToast('Please provide an API key', 'error');
                     return;
                 }
-                headers['X-API-Key'] = keyToUse;
+                headers['X-API-Key'] = key;
             }
-
-            outputPre.innerText = "Processing extraction...";
-
+            
+            const taskType = document.getElementById('extract-type').value;
+            const outputEl = document.getElementById('extract-output');
+            
+            setLoading('extract-btn', true);
+            outputEl.innerHTML = '<span class="output-placeholder">Processing with AI...</span>';
+            
             try {
                 const res = await fetch(`${API_BASE}/api/extract/${taskType}`, {
                     method: 'POST',
-                    headers: headers,
+                    headers,
                     body: JSON.stringify({ image_base64: base64ImageData })
                 });
                 
                 const data = await parseJsonResponse(res);
-                if (!res.ok) throw new Error(data.detail || 'Extraction request failed');
-
-                outputPre.innerText = JSON.stringify(data, null, 2);
-                showAlert('extract-alert', 'Extraction complete!', false);
+                if (!res.ok) throw new Error(data.detail || 'Extraction failed');
                 
+                outputEl.textContent = JSON.stringify(data, null, 2);
+                showToast('Extraction complete!', 'success');
+                
+                // Refresh credits
                 fetchUserStatus();
+                
             } catch (err) {
-                outputPre.innerText = `Error: ${err.message}`;
-                showAlert('extract-alert', err.message, true);
+                outputEl.textContent = `Error: ${err.message}`;
+                showToast(err.message, 'error');
+            } finally {
+                setLoading('extract-btn', false);
             }
         }
 
+        // Admin Functions
         async function handleAdminGenKey(e) {
             e.preventDefault();
-            clearAlert('admin-gen-alert');
+            setLoading('admin-gen-btn', true);
+            
             const secret = document.getElementById('admin-secret').value;
-            const email = document.getElementById('gen-email').value;
-            const credits = document.getElementById('gen-credits').value;
-            const tier = document.getElementById('gen-tier').value;
-
+            if (!secret) {
+                showToast('Admin secret required', 'error');
+                setLoading('admin-gen-btn', false);
+                return;
+            }
+            
             try {
-                const url = `${API_BASE}/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}&email=${encodeURIComponent(email)}&credits=${credits}&tier=${tier}`;
-                const res = await fetch(url, { method: 'POST' });
+                const params = new URLSearchParams({
+                    admin_secret: secret,
+                    email: document.getElementById('gen-email').value,
+                    credits: document.getElementById('gen-credits').value,
+                    tier: document.getElementById('gen-tier').value
+                });
+                
+                const res = await fetch(`${API_BASE}/api/admin/generate-key?${params}`, {
+                    method: 'POST'
+                });
+                
                 const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to generate key');
-
-                showAlert('admin-gen-alert', `Generated Key: ${data.api_key}`, false);
+                
+                showToast(`Key generated: ${data.api_key}`, 'success', 8000);
+                document.getElementById('gen-email').value = '';
+                
             } catch (err) {
-                showAlert('admin-gen-alert', err.message, true);
+                showToast(err.message, 'error');
+            } finally {
+                setLoading('admin-gen-btn', false);
             }
         }
 
         async function handleAdminUpdateUser(e) {
             e.preventDefault();
-            clearAlert('admin-update-alert');
-            const secret = document.getElementById('admin-secret').value;
-            const target_api_key = document.getElementById('update-target-key').value;
-            const credits = parseInt(document.getElementById('update-credits').value);
-            const tier = document.getElementById('update-tier').value;
-
+            setLoading('admin-update-btn', true);
+            
             try {
                 const res = await fetch(`${API_BASE}/api/admin/user/update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ admin_secret: secret, target_api_key, credits, tier })
+                    body: JSON.stringify({
+                        admin_secret: document.getElementById('admin-secret').value,
+                        target_api_key: document.getElementById('update-target-key').value,
+                        credits: parseInt(document.getElementById('update-credits').value),
+                        tier: document.getElementById('update-tier').value
+                    })
                 });
+                
                 const data = await parseJsonResponse(res);
-                if (!res.ok) throw new Error(data.detail || 'Failed to update user');
-
-                showAlert('admin-update-alert', 'User successfully updated!', false);
+                if (!res.ok) throw new Error(data.detail || 'Update failed');
+                
+                showToast('User updated successfully', 'success');
+                
             } catch (err) {
-                showAlert('admin-update-alert', err.message, true);
+                showToast(err.message, 'error');
+            } finally {
+                setLoading('admin-update-btn', false);
             }
         }
 
         async function handleAdminListUsers() {
-            clearAlert('admin-list-alert');
             const secret = document.getElementById('admin-secret').value;
-            const tableBody = document.getElementById('admin-users-table');
-
+            if (!secret) {
+                showToast('Admin secret required', 'error');
+                return;
+            }
+            
+            const tbody = document.getElementById('admin-users-table');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;"><div class="spinner"></div>Loading...</td></tr>';
+            
             try {
                 const res = await fetch(`${API_BASE}/api/admin/users?admin_secret=${encodeURIComponent(secret)}`);
                 const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to fetch users');
-
-                tableBody.innerHTML = '';
-                if (!data.users || data.users.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No users found</td></tr>';
+                
+                if (!data.users?.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="empty-state-icon">👤</div><p>No users found</p></td></tr>';
                     return;
                 }
-
-                data.users.forEach(u => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
+                
+                window.allUsersData = data.users; // Store for export
+                tbody.innerHTML = data.users.map(u => `
+                    <tr>
                         <td>${u.email}</td>
-                        <td style="font-family: monospace;">${u.api_key}</td>
-                        <td><span class="status-badge">${u.tier}</span></td>
+                        <td style="font-family:monospace;font-size:0.8rem;">${u.api_key}</td>
+                        <td><span class="tier-badge tier-${u.tier}">${u.tier}</span></td>
                         <td>${u.credits}</td>
-                        <td>${u.created_at || 'N/A'}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-                showAlert('admin-list-alert', `Fetched ${data.users.length} users successfully.`, false);
+                        <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</td>
+                    </tr>
+                `).join('');
+                
+                showToast(`Loaded ${data.users.length} users`, 'success');
+                
             } catch (err) {
-                showAlert('admin-list-alert', err.message, true);
+                tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><div class="empty-state-icon">⚠</div><p>${err.message}</p></td></tr>`;
+                showToast(err.message, 'error');
             }
         }
 
-        // Auto-fetch status on page load if saved credentials exist
-        if (jwtToken || userApiKey) {
-            fetchUserStatus();
+        function exportUsers() {
+            if (!window.allUsersData?.length) {
+                showToast('No data to export', 'error');
+                return;
+            }
+            
+            const csv = [
+                ['Email', 'API Key', 'Tier', 'Credits', 'Created At'],
+                ...window.allUsersData.map(u => [
+                    u.email,
+                    u.api_key,
+                    u.tier,
+                    u.credits,
+                    u.created_at
+                ])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('CSV exported', 'success');
         }
     </script>
 </body>
