@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Extraction Micro-SaaS Control Panel</title>
+    <title>Multi-Function AI Extraction Micro-SaaS</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-6">
 
     <div class="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-slate-800 pb-4 gap-4">
-            <h1 class="text-2xl font-bold tracking-wide">AI Extraction <span class="text-indigo-400 text-sm">Control Panel</span></h1>
+            <h1 class="text-2xl font-bold tracking-wide">AI Extraction <span class="text-indigo-400 text-sm">Micro-SaaS Control Panel</span></h1>
             <div class="space-x-2">
                 <button onclick="openTab('app')" class="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-500 transition">App</button>
                 <button onclick="openTab('pricing')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Buy Credits</button>
@@ -37,7 +37,7 @@
 
             <!-- Account Status Widget -->
             <div id="accountStatusBox" class="bg-slate-950 border border-slate-800 p-4 rounded-lg flex justify-between items-center text-sm">
-                <span class="text-slate-400">Account status: <strong id="accEmail" class="text-slate-200">Not Verified</strong></span>
+                <span class="text-slate-400">Account: <strong id="accEmail" class="text-slate-200">Not Verified</strong></span>
                 <div class="space-x-4">
                     <span>Tier: <strong id="accTier" class="text-indigo-400">-</strong></span>
                     <span>Credits Left: <strong id="accCredits" class="text-emerald-400">-</strong></span>
@@ -87,9 +87,6 @@
                 <button onclick="generateNewKeyAdmin()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Create New Key</button>
             </div>
 
-            <div id="adminOutput" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-purple-300 hidden"></div>
-
-            <!-- User Database Table -->
             <div class="overflow-x-auto border border-slate-800 rounded-lg">
                 <table class="w-full text-left text-xs text-slate-300">
                     <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
@@ -110,7 +107,7 @@
     </div>
 
     <script>
-        const API_URL = "https://service-production-50ff.up.railway.app"; // Change to your active backend URL
+        const API_URL = "http://localhost:8080"; // Update to your deployment URL if hosted on Railway/Render
 
         function openTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -142,7 +139,7 @@
             const loading = document.getElementById('loading');
 
             if (!apiKey || !fileInput) {
-                alert("Please provide both an API key and an image file.");
+                alert("Please provide both an API key and a document image.");
                 return;
             }
 
@@ -167,7 +164,7 @@
                     loading.classList.add('hidden');
                     if (response.ok) {
                         outputBox.textContent = JSON.stringify(data, null, 2);
-                        checkAccountStatus(); // Refresh credit count
+                        checkAccountStatus(); 
                     } else {
                         outputBox.textContent = `Error (${response.status}): ${data.detail || 'Failed'}`;
                     }
