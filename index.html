@@ -32,7 +32,7 @@
 
             <button onclick="processInvoice()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Extract Data</button>
 
-            <div id="loading" class="hidden text-center text-indigo-400 animate-pulse">Processing document locally on GPU...</div>
+            <div id="loading" class="hidden text-center text-indigo-400 animate-pulse">Processing document via cloud API...</div>
 
             <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2">Structured JSON Output</label>
@@ -48,10 +48,9 @@
                 <span class="text-3xl font-bold">$29</span><span class="text-slate-400">/month</span>
                 <ul class="text-left text-sm text-slate-300 my-6 space-y-2">
                     <li>✓ Full JSON Schema Constraints</li>
-                    <li>✓ Local GPU Backed Performance</li>
+                    <li>✓ Cloud GPU Backed Performance</li>
                     <li>✓ Direct API Key Provisioning</li>
                 </ul>
-                <!-- Replace with your live Stripe Payment Link URL -->
                 <a href="https://buy.stripe.com/6oUaEY4w44zvevHfQ04Ni01" target="_blank" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg transition">Subscribe via Stripe</a>
             </div>
         </div>
@@ -69,7 +68,7 @@
     </div>
 
     <script>
-        const API_URL = "https://service-production-50ff.up.railway.app"; // Update to your public tunnel URL (e.g. Cloudflare) in production
+        const API_URL = "https://service-production-50ff.up.railway.app";
 
         function openTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -113,7 +112,7 @@
                     }
                 } catch (err) {
                     loading.classList.add('hidden');
-                    outputBox.textContent = `Network Error: Is the local backend running?`;
+                    outputBox.textContent = `Network Error: Unable to reach the Railway backend. Check CORS or server status.`;
                 }
             };
         }
@@ -132,7 +131,7 @@
                     adminOutput.textContent = `Failed: ${data.detail}`;
                 }
             } catch(e) {
-                adminOutput.textContent = "Error connecting to local server.";
+                adminOutput.textContent = "Error connecting to server.";
             }
         }
     </script>
