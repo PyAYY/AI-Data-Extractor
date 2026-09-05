@@ -5,13 +5,12 @@ import hashlib
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from google import genai
 from instructor import from_genai
 from instructor.processing.multimodal import Image
-from pydantic import Field
 
-app = FastAPI()
+app = FastAPI(title="Multimodal Extraction SaaS API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,9 +27,15 @@ ADMIN_KEY = os.getenv("ADMIN_KEY", "master_secret_123")
 ai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 instructor_client = from_genai(ai_client)
 
+def get_db():
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def init_db():
-    with sqlite3.connect(DB_FILE) as conn:
+    with get_db() as conn:
         c = conn.cursor()
+        c.execute("PRAGMA journal_mode=WAL;")
         c.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,9 +95,11 @@ TASK_SCHEMAS = {
 }
 
 # --- Auth & User Dependency Helpers ---
-def get_user_from_headers(authorization: Optional[str] = Header(None), x_api_key: Optional[str] = Header(None)):
-    with sqlite3.connect(DB_FILE) as conn:
-        conn.row_factory = sqlite3.Row
+def get_user_from_headers(
+    authorization: Optional[str] = Header(None), 
+    x_api_key: Optional[str] = Header(None)
+):
+    with get_db() as conn:
         c = conn.cursor()
         if authorization and authorization.startswith("Bearer "):
             token = authorization.split(" ")[1]
@@ -115,10 +122,12 @@ def register_user(payload: AuthRequest):
     api_key = f"usr_{secrets.token_hex(16)}"
     
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with get_db() as conn:
             c = conn.cursor()
-            c.execute("INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, 10, 'free')",
-                      (email, pwd_hash, api_key))
+            c.execute(
+                "INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, 10, 'free')",
+                (email, pwd_hash, api_key)
+            )
             conn.commit()
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="User with this email already exists.")
@@ -130,8 +139,7 @@ def login_user(payload: AuthRequest):
     email = payload.email.lower().strip()
     pwd_hash = hash_password(payload.password)
     
-    with sqlite3.connect(DB_FILE) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM users WHERE email = ? AND password_hash = ?", (email, pwd_hash))
         user = c.fetchone()
@@ -168,16 +176,21 @@ def process_extraction(task_type: str, payload: ExtractionRequest, user: dict = 
     
     schema, prompt_text = TASK_SCHEMAS[task_type]
     
+    # Strip data URI prefix if sent by web frontend
+    raw_b64 = payload.image_base64
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",")[1]
+    
     try:
         response = instructor_client.chat.completions.create(
-            model=""gemini-3.6-flash",
+            model="gemini-2.5-flash",
             response_model=schema,
             messages=[
                 {
                     "role": "user",
                     "content": [
                         prompt_text,
-                        Image.from_base64(payload.image_base64),
+                        Image.from_base64(raw_b64),
                     ]
                 }
             ]
@@ -185,9 +198,9 @@ def process_extraction(task_type: str, payload: ExtractionRequest, user: dict = 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI Extraction failed: {str(e)}")
     
-    # Deduct credit
+    # Deduct credit upon successful extraction
     new_credits = user["credits"] - 1
-    with sqlite3.connect(DB_FILE) as conn:
+    with get_db() as conn:
         c = conn.cursor()
         c.execute("UPDATE users SET credits = ? WHERE id = ?", (new_credits, user["id"]))
         conn.commit()
@@ -199,8 +212,7 @@ def process_extraction(task_type: str, payload: ExtractionRequest, user: dict = 
 def admin_list_users(admin_secret: str = Query(...)):
     if admin_secret != ADMIN_KEY:
         raise HTTPException(status_code=403, detail="Unauthorized")
-    with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db() as conn:
         c = conn.cursor()
         c.execute("SELECT email, api_key, tier, credits FROM users")
         users = [dict(row) for row in c.fetchall()]
@@ -210,7 +222,7 @@ def admin_list_users(admin_secret: str = Query(...)):
 def admin_update_user(payload: UpdateUserRequest):
     if payload.admin_secret != ADMIN_KEY:
         raise HTTPException(status_code=403, detail="Unauthorized")
-    with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
+    with get_db() as conn:
         c = conn.cursor()
         c.execute("UPDATE users SET tier = ?, credits = ? WHERE api_key = ?", (payload.tier, payload.credits, payload.target_api_key))
         conn.commit()
@@ -219,7 +231,12 @@ def admin_update_user(payload: UpdateUserRequest):
     return {"status": "success", "message": "User updated successfully"}
 
 @app.post("/api/admin/generate-key")
-def admin_generate_key(admin_secret: str = Query(...), email: str = Query(...), credits: int = Query(100), tier: str = Query("pro")):
+def admin_generate_key(
+    admin_secret: str = Query(...), 
+    email: str = Query(...), 
+    credits: int = Query(100), 
+    tier: str = Query("pro")
+):
     if admin_secret != ADMIN_KEY:
         raise HTTPException(status_code=403, detail="Unauthorized")
     
@@ -227,10 +244,12 @@ def admin_generate_key(admin_secret: str = Query(...), email: str = Query(...), 
     hashed_pw = hash_password("defaultpassword123")
     
     try:
-        with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
+        with get_db() as conn:
             c = conn.cursor()
-            c.execute("INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, ?, ?)",
-                      (email.lower().strip(), hashed_pw, new_api_key, credits, tier))
+            c.execute(
+                "INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, ?, ?)",
+                (email.lower().strip(), hashed_pw, new_api_key, credits, tier)
+            )
             conn.commit()
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="User with this email already exists.")
