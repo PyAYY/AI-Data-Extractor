@@ -1,259 +1,688 @@
-import os
-import sqlite3
-import secrets
-import hashlib
-from typing import Optional
-from fastapi import FastAPI, HTTPException, Query, Header, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from google import genai
-from instructor import from_genai
-from instructor.processing.multimodal import Image
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Function AI Extraction Micro-SaaS</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
 
-app = FastAPI(title="Multimodal Extraction SaaS API")
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
-DB_FILE = "saas_database.db"
-ADMIN_KEY = os.getenv("ADMIN_KEY", "master_secret_123")
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
 
-# Initialize Gemini & Instructor Client
-ai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-instructor_client = from_genai(ai_client)
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
 
-def get_db():
-    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+        .nav-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
 
-def init_db():
-    with get_db() as conn:
-        c = conn.cursor()
-        c.execute("PRAGMA journal_mode=WAL;")
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                api_key TEXT UNIQUE NOT NULL,
-                access_token TEXT UNIQUE,
-                credits INTEGER DEFAULT 10,
-                tier TEXT DEFAULT 'free'
-            )
-        """)
-        conn.commit()
+        .tab-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
 
-init_db()
+        .tab-btn.active, .tab-btn:hover {
+            color: var(--text-main);
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+        .tab-content {
+            display: none;
+        }
 
-# --- Pydantic Models ---
-class AuthRequest(BaseModel):
-    email: str
-    password: str
+        .tab-content.active {
+            display: block;
+        }
 
-class UpdateUserRequest(BaseModel):
-    admin_secret: str
-    target_api_key: str
-    credits: int
-    tier: str
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
 
-class ExtractionRequest(BaseModel):
-    image_base64: str
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
 
-# --- Response Models for Extraction ---
-class InvoiceSchema(BaseModel):
-    vendor_name: str = Field(description="Name of the company issuing the invoice")
-    invoice_number: Optional[str] = Field(description="Invoice tracking number")
-    total_amount: float = Field(description="Total monetary amount due")
-    due_date: Optional[str] = Field(description="Payment due date")
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
 
-class ReceiptSchema(BaseModel):
-    merchant_name: str = Field(description="Store or merchant name")
-    transaction_date: Optional[str] = Field(description="Date of purchase")
-    total_paid: float = Field(description="Total amount paid")
-    items_purchased: list[str] = Field(description="List of items bought")
+        .form-group {
+            margin-bottom: 16px;
+        }
 
-class BusinessCardSchema(BaseModel):
-    full_name: str = Field(description="Individual's full name")
-    job_title: Optional[str] = Field(description="Professional title or role")
-    company_name: Optional[str] = Field(description="Company or organization name")
-    email: Optional[str] = Field(description="Contact email address")
-    phone_number: Optional[str] = Field(description="Contact phone number")
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
 
-TASK_SCHEMAS = {
-    "invoice": (InvoiceSchema, "Extract structured details from this invoice image."),
-    "receipt": (ReceiptSchema, "Extract structured details from this store receipt image."),
-    "business-card": (BusinessCardSchema, "Extract contact information from this business card image.")
-}
+        input, select, button, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #0f172a;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
 
-# --- Auth & User Dependency Helpers ---
-def get_user_from_headers(
-    authorization: Optional[str] = Header(None), 
-    x_api_key: Optional[str] = Header(None)
-):
-    with get_db() as conn:
-        c = conn.cursor()
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.split(" ")[1]
-            c.execute("SELECT * FROM users WHERE access_token = ?", (token,))
-        elif x_api_key:
-            c.execute("SELECT * FROM users WHERE api_key = ?", (x_api_key,))
-        else:
-            raise HTTPException(status_code=401, detail="Missing authentication credentials (API Key or Bearer Token).")
-        
-        user = c.fetchone()
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid authentication credentials.")
-        return dict(user)
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
 
-# --- Authentication Endpoints ---
-@app.post("/api/auth/register")
-def register_user(payload: AuthRequest):
-    email = payload.email.lower().strip()
-    pwd_hash = hash_password(payload.password)
-    api_key = f"usr_{secrets.token_hex(16)}"
-    
-    try:
-        with get_db() as conn:
-            c = conn.cursor()
-            c.execute(
-                "INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, 10, 'free')",
-                (email, pwd_hash, api_key)
-            )
-            conn.commit()
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="User with this email already exists.")
-    
-    return {"status": "success", "api_key": api_key, "message": "Registered successfully"}
+        button {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+        }
 
-@app.post("/api/auth/login")
-def login_user(payload: AuthRequest):
-    email = payload.email.lower().strip()
-    pwd_hash = hash_password(payload.password)
-    
-    with get_db() as conn:
-        c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE email = ? AND password_hash = ?", (email, pwd_hash))
-        user = c.fetchone()
-        
-        if not user:
-            raise HTTPException(status_code=400, detail="Invalid email or password.")
-        
-        access_token = secrets.token_hex(32)
-        c.execute("UPDATE users SET access_token = ? WHERE id = ?", (access_token, user["id"]))
-        conn.commit()
-        
-    return {
-        "status": "success",
-        "access_token": access_token,
-        "api_key": user["api_key"]
-    }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
 
-@app.get("/api/user/status")
-def get_user_status(user: dict = Depends(get_user_from_headers)):
-    return {
-        "email": user["email"],
-        "tier": user["tier"],
-        "credits_remaining": user["credits"]
-    }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
 
-# --- AI Extraction Endpoint ---
-@app.post("/api/extract/{task_type}")
-def process_extraction(task_type: str, payload: ExtractionRequest, user: dict = Depends(get_user_from_headers)):
-    if task_type not in TASK_SCHEMAS:
-        raise HTTPException(status_code=400, detail="Invalid task type specified.")
-    
-    if user["credits"] <= 0:
-        raise HTTPException(status_code=402, detail="Insufficient credits. Please top up your account.")
-    
-    schema, prompt_text = TASK_SCHEMAS[task_type]
-    
-    # Strip data URI prefix if sent by web frontend
-    raw_b64 = payload.image_base64
-    if "," in raw_b64:
-        raw_b64 = raw_b64.split(",")[1]
-    
-    try:
-        response = instructor_client.chat.completions.create(
-            model="gemini-2.5-flash",
-            response_model=schema,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        prompt_text,
-                        Image.from_base64(raw_b64),
-                    ]
+        pre {
+            background: #090d16;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            border: 1px solid var(--border-color);
+            color: #38bdf8;
+            max-height: 300px;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: var(--text-muted);
+        }
+
+        .alert {
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>AI Extraction SaaS</h1>
+        <div id="global-status">
+            <span class="status-badge" id="user-tier-badge">Guest</span>
+            <span style="margin-left: 8px; font-size: 0.9rem; color: var(--text-muted);">
+                Credits: <strong id="user-credits-val" style="color: var(--text-main);">0</strong>
+            </span>
+        </div>
+    </header>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('auth-tab')">Authentication</button>
+        <button class="tab-btn" onclick="switchTab('extract-tab')">Extraction Tool</button>
+        <button class="tab-btn" onclick="switchTab('user-tab')">User Account</button>
+        <button class="tab-btn" onclick="switchTab('admin-tab')">Admin Console</button>
+    </div>
+
+    <!-- AUTHENTICATION TAB -->
+    <div id="auth-tab" class="tab-content active">
+        <div class="grid">
+            <div class="card">
+                <h2>Register Account</h2>
+                <div id="reg-alert" class="alert"></div>
+                <form id="reg-form" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="reg-email" required placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="reg-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit">Register</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>User Login</h2>
+                <div id="login-alert" class="alert"></div>
+                <form id="login-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="login-email" required placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXTRACTION TAB -->
+    <div id="extract-tab" class="tab-content">
+        <div class="grid">
+            <div class="card">
+                <h2>Multimodal AI Document Extraction</h2>
+                <div id="extract-alert" class="alert"></div>
+                
+                <div class="form-group">
+                    <label>Extraction Task Type</label>
+                    <select id="extract-type">
+                        <option value="invoice">Invoice Extraction</option>
+                        <option value="receipt">Store Receipt Extraction</option>
+                        <option value="business-card">Business Card Extraction</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Auth Header Method</label>
+                    <select id="extract-auth-method">
+                        <option value="bearer">JWT Bearer Token (Logged in)</option>
+                        <option value="apikey">X-API-Key Header</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="manual-key-group" style="display: none;">
+                    <label>Manual API Key</label>
+                    <input type="text" id="extract-manual-key" placeholder="usr_...">
+                </div>
+
+                <div class="form-group">
+                    <label>Upload Document Image</label>
+                    <input type="file" id="extract-file" accept="image/*" onchange="previewImage(event)">
+                    <img id="image-preview" class="preview-img" alt="Document Preview">
+                </div>
+
+                <button onclick="handleExtraction()">Run AI Extraction</button>
+            </div>
+
+            <div class="card">
+                <h2>Extraction Result Output</h2>
+                <pre id="extract-output">// JSON response will appear here after process completion...</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- USER ACCOUNT TAB -->
+    <div id="user-tab" class="tab-content">
+        <div class="card">
+            <h2>Account Details & API Status</h2>
+            <div id="user-alert" class="alert"></div>
+            <button onclick="fetchUserStatus()" style="width: auto; margin-bottom: 16px;">Refresh Status</button>
+            
+            <div class="grid">
+                <div>
+                    <p><strong>Email:</strong> <span id="account-email">Not logged in</span></p>
+                    <p style="margin-top: 8px;"><strong>Tier:</strong> <span id="account-tier">-</span></p>
+                    <p style="margin-top: 8px;"><strong>Remaining Credits:</strong> <span id="account-credits">-</span></p>
+                </div>
+                <div>
+                    <label>Active API Key:</label>
+                    <input type="text" id="account-api-key" readonly placeholder="usr_...">
+                    <label style="margin-top: 12px;">JWT Bearer Token:</label>
+                    <textarea id="account-jwt" rows="3" readonly placeholder="Bearer Token..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN CONSOLE TAB -->
+    <div id="admin-tab" class="tab-content">
+        <div class="card" style="margin-bottom: 20px;">
+            <h2>Admin Authentication</h2>
+            <div class="form-group">
+                <label>Admin Secret Key</label>
+                <input type="password" id="admin-secret" value="admin-secret-master-key">
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Generate New API Key</h2>
+                <div id="admin-gen-alert" class="alert"></div>
+                <form onsubmit="handleAdminGenKey(event)">
+                    <div class="form-group">
+                        <label>Target Email</label>
+                        <input type="email" id="gen-email" required value="gen_user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Initial Credits</label>
+                        <input type="number" id="gen-credits" value="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Account Tier</label>
+                        <select id="gen-tier">
+                            <option value="pro">Pro</option>
+                            <option value="free">Free</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                    <button type="submit">Generate Key</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Update Existing User</h2>
+                <div id="admin-update-alert" class="alert"></div>
+                <form onsubmit="handleAdminUpdateUser(event)">
+                    <div class="form-group">
+                        <label>Target User API Key</label>
+                        <input type="text" id="update-target-key" required placeholder="usr_...">
+                    </div>
+                    <div class="form-group">
+                        <label>New Credits Count</label>
+                        <input type="number" id="update-credits" required value="250">
+                    </div>
+                    <div class="form-group">
+                        <label>New Account Tier</label>
+                        <select id="update-tier">
+                            <option value="pro">Pro</option>
+                            <option value="free">Free</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                    <button type="submit">Update User</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>All System Users</h2>
+            <button onclick="handleAdminListUsers()" style="width: auto; margin-bottom: 12px;">Fetch Users List</button>
+            <div id="admin-list-alert" class="alert"></div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>API Key</th>
+                            <th>Tier</th>
+                            <th>Credits</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-users-table">
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Click "Fetch Users List" to view data</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Auth State
+        let jwtToken = localStorage.getItem("jwt_token") || "";
+        let userApiKey = localStorage.getItem("user_api_key") || "";
+        let base64ImageData = "";
+
+        // UI Helpers
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        function showAlert(elementId, message, isError = true) {
+            const el = document.getElementById(elementId);
+            el.className = `alert ${isError ? 'alert-error' : 'alert-success'}`;
+            el.innerText = message;
+            el.style.display = 'block';
+        }
+
+        function clearAlert(elementId) {
+            const el = document.getElementById(elementId);
+            el.style.display = 'none';
+        }
+
+        document.getElementById('extract-auth-method').addEventListener('change', (e) => {
+            const manualGroup = document.getElementById('manual-key-group');
+            manualGroup.style.display = e.target.value === 'apikey' ? 'block' : 'none';
+        });
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('image-preview');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                // Extract base64 part only
+                base64ImageData = e.target.result.split(',')[1];
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- API INTEGRATIONS ---
+
+        // 1. REGISTER
+        async function handleRegister(e) {
+            e.preventDefault();
+            clearAlert('reg-alert');
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Registration failed');
+                
+                showAlert('reg-alert', `Registered! Created Key: ${data.api_key}`, false);
+                document.getElementById('reg-form').reset();
+            } catch (err) {
+                showAlert('reg-alert', err.message, true);
+            }
+        }
+
+        // 2. LOGIN
+        async function handleLogin(e) {
+            e.preventDefault();
+            clearAlert('login-alert');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Login failed');
+
+                jwtToken = data.access_token;
+                userApiKey = data.api_key;
+                localStorage.setItem("jwt_token", jwtToken);
+                localStorage.setItem("user_api_key", userApiKey);
+
+                showAlert('login-alert', 'Login successful!', false);
+                updateGlobalUserUI(data.email, data.tier, data.credits, data.api_key, data.access_token);
+            } catch (err) {
+                showAlert('login-alert', err.message, true);
+            }
+        }
+
+        // 3. USER STATUS
+        async function fetchUserStatus() {
+            clearAlert('user-alert');
+            if (!jwtToken && !userApiKey) {
+                showAlert('user-alert', 'No authentication token or API Key available. Please login first.');
+                return;
+            }
+
+            const headers = {};
+            if (jwtToken) {
+                headers['Authorization'] = `Bearer ${jwtToken}`;
+            } else {
+                headers['X-API-Key'] = userApiKey;
+            }
+
+            try {
+                const res = await fetch('/api/user/status', { headers });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to fetch status');
+
+                updateGlobalUserUI(data.email, data.tier, data.credits_remaining, data.api_key, jwtToken);
+                showAlert('user-alert', 'Account status updated!', false);
+            } catch (err) {
+                showAlert('user-alert', err.message, true);
+            }
+        }
+
+        function updateGlobalUserUI(email, tier, credits, apiKey, token) {
+            document.getElementById('user-tier-badge').innerText = tier.toUpperCase();
+            document.getElementById('user-credits-val').innerText = credits;
+            document.getElementById('account-email').innerText = email;
+            document.getElementById('account-tier').innerText = tier;
+            document.getElementById('account-credits').innerText = credits;
+            document.getElementById('account-api-key').value = apiKey || "";
+            document.getElementById('account-jwt').value = token ? `Bearer ${token}` : "";
+        }
+
+        // 4. EXTRACTION
+        async function handleExtraction() {
+            clearAlert('extract-alert');
+            const outputPre = document.getElementById('extract-output');
+            const taskType = document.getElementById('extract-type').value;
+            const authMethod = document.getElementById('extract-auth-method').value;
+            const manualKey = document.getElementById('extract-manual-key').value;
+
+            if (!base64ImageData) {
+                showAlert('extract-alert', 'Please select an image file first.');
+                return;
+            }
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (authMethod === 'bearer') {
+                if (!jwtToken) {
+                    showAlert('extract-alert', 'No active JWT session. Please log in or use X-API-Key.');
+                    return;
                 }
-            ]
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI Extraction failed: {str(e)}")
-    
-    # Deduct credit upon successful extraction
-    new_credits = user["credits"] - 1
-    with get_db() as conn:
-        c = conn.cursor()
-        c.execute("UPDATE users SET credits = ? WHERE id = ?", (new_credits, user["id"]))
-        conn.commit()
-        
-    return response
+                headers['Authorization'] = `Bearer ${jwtToken}`;
+            } else {
+                const keyToUse = manualKey || userApiKey;
+                if (!keyToUse) {
+                    showAlert('extract-alert', 'Please enter an API Key or log in.');
+                    return;
+                }
+                headers['X-API-Key'] = keyToUse;
+            }
 
-# --- Admin Endpoints ---
-@app.get("/api/admin/users")
-def admin_list_users(admin_secret: str = Query(...)):
-    if admin_secret != ADMIN_KEY:
-        raise HTTPException(status_code=403, detail="Unauthorized")
-    with get_db() as conn:
-        c = conn.cursor()
-        c.execute("SELECT email, api_key, tier, credits FROM users")
-        users = [dict(row) for row in c.fetchall()]
-    return {"users": users}
+            outputPre.innerText = "Processing extraction via Gemini Flash 2.5...";
 
-@app.post("/api/admin/user/update")
-def admin_update_user(payload: UpdateUserRequest):
-    if payload.admin_secret != ADMIN_KEY:
-        raise HTTPException(status_code=403, detail="Unauthorized")
-    with get_db() as conn:
-        c = conn.cursor()
-        c.execute("UPDATE users SET tier = ?, credits = ? WHERE api_key = ?", (payload.tier, payload.credits, payload.target_api_key))
-        conn.commit()
-        if c.rowcount == 0:
-            raise HTTPException(status_code=404, detail="User not found")
-    return {"status": "success", "message": "User updated successfully"}
+            try {
+                const res = await fetch(`/api/extract/${taskType}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ image_base64: base64ImageData })
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Extraction request failed');
 
-@app.post("/api/admin/generate-key")
-def admin_generate_key(
-    admin_secret: str = Query(...), 
-    email: str = Query(...), 
-    credits: int = Query(100), 
-    tier: str = Query("pro")
-):
-    if admin_secret != ADMIN_KEY:
-        raise HTTPException(status_code=403, detail="Unauthorized")
-    
-    new_api_key = f"usr_{secrets.token_hex(16)}"
-    hashed_pw = hash_password("defaultpassword123")
-    
-    try:
-        with get_db() as conn:
-            c = conn.cursor()
-            c.execute(
-                "INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, ?, ?)",
-                (email.lower().strip(), hashed_pw, new_api_key, credits, tier)
-            )
-            conn.commit()
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="User with this email already exists.")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-        
-    return {"status": "success", "api_key": new_api_key, "email": email, "credits": credits, "tier": tier}
+                outputPre.innerText = JSON.stringify(data, null, 2);
+                showAlert('extract-alert', 'Extraction complete!', false);
+                
+                // Refresh credit count
+                fetchUserStatus();
+            } catch (err) {
+                outputPre.innerText = `Error: ${err.message}`;
+                showAlert('extract-alert', err.message, true);
+            }
+        }
+
+        // 5. ADMIN: GENERATE KEY
+        async function handleAdminGenKey(e) {
+            e.preventDefault();
+            clearAlert('admin-gen-alert');
+            const secret = document.getElementById('admin-secret').value;
+            const email = document.getElementById('gen-email').value;
+            const credits = document.getElementById('gen-credits').value;
+            const tier = document.getElementById('gen-tier').value;
+
+            try {
+                const url = `/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}&email=${encodeURIComponent(email)}&credits=${credits}&tier=${tier}`;
+                const res = await fetch(url, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to generate key');
+
+                showAlert('admin-gen-alert', `Generated Key: ${data.api_key}`, false);
+            } catch (err) {
+                showAlert('admin-gen-alert', err.message, true);
+            }
+        }
+
+        // 6. ADMIN: UPDATE USER
+        async function handleAdminUpdateUser(e) {
+            e.preventDefault();
+            clearAlert('admin-update-alert');
+            const secret = document.getElementById('admin-secret').value;
+            const target_api_key = document.getElementById('update-target-key').value;
+            const credits = parseInt(document.getElementById('update-credits').value);
+            const tier = document.getElementById('update-tier').value;
+
+            try {
+                const res = await fetch('/api/admin/user/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_secret: secret, target_api_key, credits, tier })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to update user');
+
+                showAlert('admin-update-alert', 'User successfully updated!', false);
+            } catch (err) {
+                showAlert('admin-update-alert', err.message, true);
+            }
+        }
+
+        // 7. ADMIN: LIST USERS
+        async function handleAdminListUsers() {
+            clearAlert('admin-list-alert');
+            const secret = document.getElementById('admin-secret').value;
+            const tableBody = document.getElementById('admin-users-table');
+
+            try {
+                const res = await fetch(`/api/admin/users?admin_secret=${encodeURIComponent(secret)}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to fetch users');
+
+                tableBody.innerHTML = '';
+                if (data.users.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No users found</td></tr>';
+                    return;
+                }
+
+                data.users.forEach(u => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${u.email}</td>
+                        <td style="font-family: monospace;">${u.api_key}</td>
+                        <td><span class="status-badge">${u.tier}</span></td>
+                        <td>${u.credits}</td>
+                        <td>${u.created_at || 'N/A'}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                showAlert('admin-list-alert', `Fetched ${data.users.length} users successfully.`, false);
+            } catch (err) {
+                showAlert('admin-list-alert', err.message, true);
+            }
+        }
+
+        // Auto-fetch status on startup if saved key/token exists
+        if (jwtToken || userApiKey) {
+            fetchUserStatus();
+        }
+    </script>
+</body>
+</html>
