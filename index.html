@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Function AI Extraction Micro-SaaS</title>
+    <title>AI Extraction Micro-SaaS Control Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-6">
@@ -13,6 +13,7 @@
             <h1 class="text-2xl font-bold tracking-wide">AI Extraction <span class="text-indigo-400 text-sm">Micro-SaaS Control Panel</span></h1>
             <div class="space-x-2">
                 <button onclick="openTab('app')" class="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-500 transition">App</button>
+                <button onclick="openTab('account')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">My Account</button>
                 <button onclick="openTab('pricing')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Buy Credits</button>
                 <button onclick="openTab('admin')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Admin Panel</button>
             </div>
@@ -22,7 +23,7 @@
         <div id="tab-app" class="tab-content space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-2">Your API Key</label>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Your API Key (or log in via Account tab)</label>
                     <input type="password" id="apiKeyInput" placeholder="usr_..." onchange="checkAccountStatus()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
@@ -35,9 +36,8 @@
                 </div>
             </div>
 
-            <!-- Account Status Widget -->
             <div id="accountStatusBox" class="bg-slate-950 border border-slate-800 p-4 rounded-lg flex justify-between items-center text-sm">
-                <span class="text-slate-400">Account: <strong id="accEmail" class="text-slate-200">Not Verified</strong></span>
+                <span class="text-slate-400">Account: <strong id="accEmail" class="text-slate-200">Not Logged In</strong></span>
                 <div class="space-x-4">
                     <span>Tier: <strong id="accTier" class="text-indigo-400">-</strong></span>
                     <span>Credits Left: <strong id="accCredits" class="text-emerald-400">-</strong></span>
@@ -59,6 +59,43 @@
             </div>
         </div>
 
+        <!-- MY ACCOUNT & LOGIN TAB -->
+        <div id="tab-account" class="tab-content hidden space-y-8">
+            <div id="loggedOutView" class="max-w-md mx-auto bg-slate-950 border border-slate-800 p-6 rounded-xl space-y-4">
+                <h2 class="text-xl font-semibold text-center">User Portal Authentication</h2>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="authEmail" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Password</label>
+                    <input type="password" id="authPassword" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex gap-4 pt-2">
+                    <button onclick="loginUser()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition text-sm">Log In</button>
+                    <button onclick="registerUser()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 font-semibold rounded-lg transition text-sm">Register</button>
+                </div>
+                <p id="authMsg" class="text-xs text-center text-indigo-400"></p>
+            </div>
+
+            <div id="loggedInView" class="hidden max-w-lg mx-auto bg-slate-950 border border-slate-800 p-6 rounded-xl space-y-4">
+                <h2 class="text-xl font-semibold">Account Dashboard</h2>
+                <div class="text-sm space-y-2 text-slate-300">
+                    <p><strong>Email:</strong> <span id="dashEmail"></span></p>
+                    <p><strong>Membership Tier:</strong> <span id="dashTier" class="text-indigo-400"></span></p>
+                    <p><strong>Remaining Credits:</strong> <span id="dashCredits" class="text-emerald-400"></span></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Your Secret API Key</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="dashApiKey" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-300">
+                        <button onclick="navigator.clipboard.writeText(document.getElementById('dashApiKey').value); alert('API Key copied!');" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs">Copy</button>
+                    </div>
+                </div>
+                <button onclick="logoutUser()" class="w-full py-2 bg-rose-600/80 hover:bg-rose-600 font-semibold rounded-lg transition text-sm">Log Out</button>
+            </div>
+        </div>
+
         <!-- PRICING TAB -->
         <div id="tab-pricing" class="tab-content hidden space-y-6 text-center">
             <h2 class="text-xl font-semibold">Top Up Credits & Subscriptions</h2>
@@ -70,7 +107,7 @@
                     <li>✓ Access to All Parsing Endpoints</li>
                     <li>✓ Automated Key Provisioning</li>
                 </ul>
-                <a href="https://buy.stripe.com/6oUaEY4w44zvevHfQ04Ni01" target="_blank" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg transition">Subscribe via Stripe</a>
+                <a href="https://buy.stripe.com/your_stripe_link_placeholder" target="_blank" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg transition">Subscribe via Stripe</a>
             </div>
         </div>
 
@@ -79,7 +116,7 @@
             <h2 class="text-xl font-semibold">Master Admin Controls</h2>
             <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2">Master Admin Secret</label>
-                <input type="password" id="adminSecretInput" placeholder="admin key" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                <input type="password" id="adminSecretInput" placeholder="admin-secret-master-key" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
             </div>
             
             <div class="flex gap-4">
@@ -107,12 +144,94 @@
     </div>
 
     <script>
-        const API_URL = "http://localhost:8080"; // Update to your deployment URL if hosted on Railway/Render
+        const API_URL = "http://localhost:8080"; 
 
         function openTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
             if(tabName === 'app') checkAccountStatus();
+            if(tabName === 'account') checkLocalSession();
+        }
+
+        async function registerUser() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const msg = document.getElementById('authMsg');
+            
+            try {
+                const res = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    msg.textContent = "Registration successful! You can now log in.";
+                    document.getElementById('apiKeyInput').value = data.api_key;
+                } else {
+                    msg.textContent = data.detail || "Registration failed";
+                }
+            } catch(e) { msg.textContent = "Network error"; }
+        }
+
+        async function loginUser() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const msg = document.getElementById('authMsg');
+            
+            try {
+                const res = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    localStorage.setItem('saas_token', data.access_token);
+                    localStorage.setItem('saas_apikey', data.api_key);
+                    document.getElementById('apiKeyInput').value = data.api_key;
+                    msg.textContent = "Logged in successfully!";
+                    checkLocalSession();
+                } else {
+                    msg.textContent = data.detail || "Login failed";
+                }
+            } catch(e) { msg.textContent = "Network error"; }
+        }
+
+        function checkLocalSession() {
+            const token = localStorage.getItem('saas_token');
+            const apiKey = localStorage.getItem('saas_apikey');
+            if(token && apiKey) {
+                document.getElementById('loggedOutView').classList.add('hidden');
+                document.getElementById('loggedInView').classList.remove('hidden');
+                document.getElementById('dashApiKey').value = apiKey;
+                fetchUserDashboard(token);
+            } else {
+                document.getElementById('loggedOutView').classList.remove('hidden');
+                document.getElementById('loggedInView').classList.add('hidden');
+            }
+        }
+
+        async function fetchUserDashboard(token) {
+            try {
+                const res = await fetch(`${API_URL}/api/user/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    document.getElementById('dashEmail').textContent = data.email;
+                    document.getElementById('dashTier').textContent = data.tier;
+                    document.getElementById('dashCredits').textContent = data.credits_remaining;
+                } else {
+                    logoutUser();
+                }
+            } catch(e) { console.error("Session check failed"); }
+        }
+
+        function logoutUser() {
+            localStorage.removeItem('saas_token');
+            localStorage.removeItem('saas_apikey');
+            checkLocalSession();
         }
 
         async function checkAccountStatus() {
@@ -132,14 +251,19 @@
         }
 
         async function processExtraction() {
-            const apiKey = document.getElementById('apiKeyInput').value;
+            const apiKey = document.getElementById('apiKeyInput').value || localStorage.getItem('saas_apikey');
+            const token = localStorage.getItem('saas_token');
             const taskType = document.getElementById('taskTypeSelect').value;
             const fileInput = document.getElementById('fileInput').files[0];
             const outputBox = document.getElementById('outputResult');
             const loading = document.getElementById('loading');
 
-            if (!apiKey || !fileInput) {
-                alert("Please provide both an API key and a document image.");
+            if (!apiKey && !token) {
+                alert("Please log in or provide an API key.");
+                return;
+            }
+            if (!fileInput) {
+                alert("Please select a document image.");
                 return;
             }
 
@@ -150,13 +274,17 @@
             reader.readAsDataURL(fileInput);
             reader.onload = async () => {
                 const base64String = reader.result.split(',')[1];
+                let headers = { 'Content-Type': 'application/json' };
+                if(token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                } else {
+                    headers['X-API-Key'] = apiKey;
+                }
+
                 try {
                     const response = await fetch(`${API_URL}/api/extract/${taskType}`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-API-Key': apiKey
-                        },
+                        headers: headers,
                         body: JSON.stringify({ image_base64: base64String })
                     });
                     
