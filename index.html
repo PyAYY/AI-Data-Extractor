@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Document Extraction API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-6">
+
+    <div class="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
+        <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+            <h1 class="text-2xl font-bold tracking-wide">Invoice Parser <span class="text-indigo-400 text-sm">Micro-SaaS</span></h1>
+            <div class="space-x-2">
+                <button onclick="openTab('app')" class="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-500 transition">App</button>
+                <button onclick="openTab('pricing')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Buy Access</button>
+                <button onclick="openTab('admin')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Admin</button>
+            </div>
+        </header>
+
+        <!-- APP TAB -->
+        <div id="tab-app" class="tab-content space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Your API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="usr_..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Upload Invoice Image (JPG/PNG)</label>
+                <input type="file" id="fileInput" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"/>
+            </div>
+
+            <button onclick="processInvoice()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Extract Data</button>
+
+            <div id="loading" class="hidden text-center text-indigo-400 animate-pulse">Processing document locally on GPU...</div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Structured JSON Output</label>
+                <pre id="outputResult" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-indigo-300 h-64 overflow-y-auto"></pre>
+            </div>
+        </div>
+
+        <!-- PRICING TAB -->
+        <div id="tab-pricing" class="tab-content hidden space-y-6 text-center">
+            <h2 class="text-xl font-semibold">Unlimited Extraction API</h2>
+            <p class="text-slate-400 text-sm">Get instant access to automated invoice data extraction.</p>
+            <div class="bg-slate-950 border border-slate-800 p-6 rounded-xl max-w-sm mx-auto">
+                <span class="text-3xl font-bold">$29</span><span class="text-slate-400">/month</span>
+                <ul class="text-left text-sm text-slate-300 my-6 space-y-2">
+                    <li>✓ Full JSON Schema Constraints</li>
+                    <li>✓ Local GPU Backed Performance</li>
+                    <li>✓ Direct API Key Provisioning</li>
+                </ul>
+                <!-- Replace with your live Stripe Payment Link URL -->
+                <a href="https://buy.stripe.com/your_stripe_link_placeholder" target="_blank" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg transition">Subscribe via Stripe</a>
+            </div>
+        </div>
+
+        <!-- ADMIN TAB -->
+        <div id="tab-admin" class="tab-content hidden space-y-6">
+            <h2 class="text-xl font-semibold">Admin Panel</h2>
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Master Admin Secret</label>
+                <input type="password" id="adminSecretInput" placeholder="admin-secret-master-key" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+            </div>
+            <button onclick="generateNewKey()" class="w-full py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-lg transition">Generate New User API Key</button>
+            <div id="adminOutput" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-purple-300"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000"; // Update to your public tunnel URL (e.g. Cloudflare) in production
+
+        function openTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        }
+
+        async function processInvoice() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            const fileInput = document.getElementById('fileInput').files[0];
+            const outputBox = document.getElementById('outputResult');
+            const loading = document.getElementById('loading');
+
+            if (!apiKey || !fileInput) {
+                alert("Please provide both an API key and an image file.");
+                return;
+            }
+
+            loading.classList.remove('hidden');
+            outputBox.textContent = "";
+
+            const reader = new FileReader();
+            reader.readAsDataURL(fileInput);
+            reader.onload = async () => {
+                const base64String = reader.result.split(',')[1];
+                try {
+                    const response = await fetch(`${API_URL}/api/extract`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': apiKey
+                        },
+                        body: JSON.stringify({ image_base64: base64String })
+                    });
+                    
+                    const data = await response.json();
+                    loading.classList.add('hidden');
+                    if (response.ok) {
+                        outputBox.textContent = JSON.stringify(data, null, 2);
+                    } else {
+                        outputBox.textContent = `Error: ${data.detail || 'Unauthorized'}`;
+                    }
+                } catch (err) {
+                    loading.classList.add('hidden');
+                    outputBox.textContent = `Network Error: Is the local backend running?`;
+                }
+            };
+        }
+
+        async function generateNewKey() {
+            const secret = document.getElementById('adminSecretInput').value;
+            const adminOutput = document.getElementById('adminOutput');
+            try {
+                const res = await fetch(`${API_URL}/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    adminOutput.textContent = `New API Key Generated:\n${data.api_key}`;
+                } else {
+                    adminOutput.textContent = `Failed: ${data.detail}`;
+                }
+            } catch(e) {
+                adminOutput.textContent = "Error connecting to local server.";
+            }
+        }
+    </script>
+</body>
+</html>
