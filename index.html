@@ -3,80 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Document Extraction API</title>
+    <title>AI Extraction Micro-SaaS Control Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-6">
 
-    <div class="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
-        <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
-            <h1 class="text-2xl font-bold tracking-wide">Invoice Parser <span class="text-indigo-400 text-sm">Micro-SaaS</span></h1>
+    <div class="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-slate-800 pb-4 gap-4">
+            <h1 class="text-2xl font-bold tracking-wide">AI Extraction <span class="text-indigo-400 text-sm">Control Panel</span></h1>
             <div class="space-x-2">
                 <button onclick="openTab('app')" class="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-500 transition">App</button>
-                <button onclick="openTab('pricing')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Buy Access</button>
-                <button onclick="openTab('admin')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Admin</button>
+                <button onclick="openTab('pricing')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Buy Credits</button>
+                <button onclick="openTab('admin')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Admin Panel</button>
             </div>
         </header>
 
         <!-- APP TAB -->
         <div id="tab-app" class="tab-content space-y-6">
-            <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Your API Key</label>
-                <input type="password" id="apiKeyInput" placeholder="usr_..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Your API Key</label>
+                    <input type="password" id="apiKeyInput" placeholder="usr_..." onchange="checkAccountStatus()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-2">Extraction Task Type</label>
+                    <select id="taskTypeSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
+                        <option value="invoice">Invoice Parser (1 Credit)</option>
+                        <option value="receipt">Store Receipt Parser (1 Credit)</option>
+                        <option value="business-card">Business Card Scanner (1 Credit)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Account Status Widget -->
+            <div id="accountStatusBox" class="bg-slate-950 border border-slate-800 p-4 rounded-lg flex justify-between items-center text-sm">
+                <span class="text-slate-400">Account status: <strong id="accEmail" class="text-slate-200">Not Verified</strong></span>
+                <div class="space-x-4">
+                    <span>Tier: <strong id="accTier" class="text-indigo-400">-</strong></span>
+                    <span>Credits Left: <strong id="accCredits" class="text-emerald-400">-</strong></span>
+                </div>
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Upload Invoice Image (JPG/PNG)</label>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Upload Document Image</label>
                 <input type="file" id="fileInput" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"/>
             </div>
 
-            <button onclick="processInvoice()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Extract Data</button>
+            <button onclick="processExtraction()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Run AI Extraction</button>
 
-            <div id="loading" class="hidden text-center text-indigo-400 animate-pulse">Processing document via cloud API...</div>
+            <div id="loading" class="hidden text-center text-indigo-400 animate-pulse">Processing document via Gemini Flash...</div>
 
             <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2">Structured JSON Output</label>
-                <pre id="outputResult" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-indigo-300 h-64 overflow-y-auto"></pre>
+                <pre id="outputResult" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-indigo-300 h-56 overflow-y-auto"></pre>
             </div>
         </div>
 
         <!-- PRICING TAB -->
         <div id="tab-pricing" class="tab-content hidden space-y-6 text-center">
-            <h2 class="text-xl font-semibold">Unlimited Extraction API</h2>
-            <p class="text-slate-400 text-sm">Get instant access to automated invoice data extraction.</p>
+            <h2 class="text-xl font-semibold">Top Up Credits & Subscriptions</h2>
+            <p class="text-slate-400 text-sm">Unlock instant API access and automated credit top-ups.</p>
             <div class="bg-slate-950 border border-slate-800 p-6 rounded-xl max-w-sm mx-auto">
                 <span class="text-3xl font-bold">$29</span><span class="text-slate-400">/month</span>
                 <ul class="text-left text-sm text-slate-300 my-6 space-y-2">
-                    <li>✓ Full JSON Schema Constraints</li>
-                    <li>✓ Cloud GPU Backed Performance</li>
-                    <li>✓ Direct API Key Provisioning</li>
+                    <li>✓ 250 Extraction Credits /mo</li>
+                    <li>✓ Access to All Parsing Endpoints</li>
+                    <li>✓ Automated Key Provisioning</li>
                 </ul>
-                <a href="https://buy.stripe.com/6oUaEY4w44zvevHfQ04Ni01" target="_blank" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg transition">Subscribe via Stripe</a>
+                <a href="https://buy.stripe.com/your_stripe_link_placeholder" target="_blank" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg transition">Subscribe via Stripe</a>
             </div>
         </div>
 
         <!-- ADMIN TAB -->
         <div id="tab-admin" class="tab-content hidden space-y-6">
-            <h2 class="text-xl font-semibold">Admin Panel</h2>
+            <h2 class="text-xl font-semibold">Master Admin Controls</h2>
             <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2">Master Admin Secret</label>
-                <input type="password" id="adminSecretInput" placeholder="None" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+                <input type="password" id="adminSecretInput" placeholder="admin-secret-master-key" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
             </div>
-            <button onclick="generateNewKey()" class="w-full py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-lg transition">Generate New User API Key</button>
-            <div id="adminOutput" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-purple-300"></div>
+            
+            <div class="flex gap-4">
+                <button onclick="loadAdminUsers()" class="flex-1 py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-lg transition">Refresh User Database</button>
+                <button onclick="generateNewKeyAdmin()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Create New Key</button>
+            </div>
+
+            <div id="adminOutput" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-purple-300 hidden"></div>
+
+            <!-- User Database Table -->
+            <div class="overflow-x-auto border border-slate-800 rounded-lg">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">API Key</th>
+                            <th class="p-3">Tier</th>
+                            <th class="p-3">Credits</th>
+                            <th class="p-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminUserTableBody">
+                        <tr><td colspan="5" class="p-4 text-center text-slate-500">Enter admin secret and click Refresh User Database.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_URL = "https://service-production-50ff.up.railway.app";
+        const API_URL = "https://service-production-50ff.up.railway.app"; // Change to your active backend URL
 
         function openTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            if(tabName === 'app') checkAccountStatus();
         }
 
-        async function processInvoice() {
+        async function checkAccountStatus() {
             const apiKey = document.getElementById('apiKeyInput').value;
+            if(!apiKey) return;
+            try {
+                const res = await fetch(`${API_URL}/api/user/status`, {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    document.getElementById('accEmail').textContent = data.email;
+                    document.getElementById('accTier').textContent = data.tier;
+                    document.getElementById('accCredits').textContent = data.credits_remaining;
+                }
+            } catch(e) { console.error("Could not fetch user status"); }
+        }
+
+        async function processExtraction() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            const taskType = document.getElementById('taskTypeSelect').value;
             const fileInput = document.getElementById('fileInput').files[0];
             const outputBox = document.getElementById('outputResult');
             const loading = document.getElementById('loading');
@@ -94,7 +154,7 @@
             reader.onload = async () => {
                 const base64String = reader.result.split(',')[1];
                 try {
-                    const response = await fetch(`${API_URL}/api/extract`, {
+                    const response = await fetch(`${API_URL}/api/extract/${taskType}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -107,31 +167,75 @@
                     loading.classList.add('hidden');
                     if (response.ok) {
                         outputBox.textContent = JSON.stringify(data, null, 2);
+                        checkAccountStatus(); // Refresh credit count
                     } else {
-                        outputBox.textContent = `Error: ${data.detail || 'Unauthorized'}`;
+                        outputBox.textContent = `Error (${response.status}): ${data.detail || 'Failed'}`;
                     }
                 } catch (err) {
                     loading.classList.add('hidden');
-                    outputBox.textContent = `Network Error: Unable to reach the Railway backend. Check CORS or server status.`;
+                    outputBox.textContent = `Network Error: Could not reach backend server.`;
                 }
             };
         }
 
-        async function generateNewKey() {
+        async function loadAdminUsers() {
             const secret = document.getElementById('adminSecretInput').value;
-            const adminOutput = document.getElementById('adminOutput');
+            const tbody = document.getElementById('adminUserTableBody');
             try {
-                const res = await fetch(`${API_URL}/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}`, {
-                    method: 'POST'
-                });
+                const res = await fetch(`${API_URL}/api/admin/users?admin_secret=${encodeURIComponent(secret)}`);
                 const data = await res.json();
                 if(res.ok) {
-                    adminOutput.textContent = `New API Key Generated:\n${data.api_key}`;
+                    tbody.innerHTML = '';
+                    data.users.forEach(u => {
+                        tbody.innerHTML += `
+                            <tr class="border-b border-slate-800">
+                                <td class="p-3">${u.email}</td>
+                                <td class="p-3 font-mono text-slate-400">${u.api_key.substring(0, 10)}...</td>
+                                <td class="p-3"><input type="text" id="tier_${u.api_key}" value="${u.tier}" class="bg-slate-900 border border-slate-700 p-1 rounded w-20"></td>
+                                <td class="p-3"><input type="number" id="credits_${u.api_key}" value="${u.credits}" class="bg-slate-900 border border-slate-700 p-1 rounded w-20"></td>
+                                <td class="p-3"><button onclick="updateUser('${u.api_key}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white">Save</button></td>
+                            </tr>
+                        `;
+                    });
                 } else {
-                    adminOutput.textContent = `Failed: ${data.detail}`;
+                    alert(data.detail || "Unauthorized");
                 }
-            } catch(e) {
-                adminOutput.textContent = "Error connecting to server.";
+            } catch(e) { alert("Admin connection failed"); }
+        }
+
+        async function updateUser(apiKey) {
+            const secret = document.getElementById('adminSecretInput').value;
+            const newTier = document.getElementById(`tier_${apiKey}`).value;
+            const newCredits = parseInt(document.getElementById(`credits_${apiKey}`).value);
+
+            const res = await fetch(`${API_URL}/api/admin/user/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_secret: secret, target_api_key: apiKey, credits: newCredits, tier: newTier })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                alert("User successfully updated!");
+                loadAdminUsers();
+            } else {
+                alert(data.detail || "Update failed");
+            }
+        }
+
+        async function generateNewKeyAdmin() {
+            const secret = document.getElementById('adminSecretInput').value;
+            const email = prompt("Enter customer email for new key:", "client@example.com");
+            if(!email) return;
+
+            const res = await fetch(`${API_URL}/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}&email=${encodeURIComponent(email)}&credits=100&tier=pro`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if(res.ok) {
+                alert(`New API Key generated successfully:\n${data.api_key}`);
+                loadAdminUsers();
+            } else {
+                alert(data.detail || "Failed to generate key");
             }
         }
     </script>
