@@ -170,7 +170,7 @@ def process_extraction(task_type: str, payload: ExtractionRequest, user: dict = 
     
     try:
         response = instructor_client.chat.completions.create(
-            model="gemini-2.5-flash",
+            model=""gemini-3.6-flash",
             response_model=schema,
             messages=[
                 {
