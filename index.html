@@ -210,7 +210,7 @@
     <header>
         <h1>AI Extraction SaaS</h1>
         <div id="global-status">
-            <span class="status-badge" id="user-tier-badge">Guest</span>
+            <span class="status-badge" id="user-tier-badge">GUEST</span>
             <span style="margin-left: 8px; font-size: 0.9rem; color: var(--text-muted);">
                 Credits: <strong id="user-credits-val" style="color: var(--text-main);">0</strong>
             </span>
@@ -218,10 +218,10 @@
     </header>
 
     <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('auth-tab')">Authentication</button>
-        <button class="tab-btn" onclick="switchTab('extract-tab')">Extraction Tool</button>
-        <button class="tab-btn" onclick="switchTab('user-tab')">User Account</button>
-        <button class="tab-btn" onclick="switchTab('admin-tab')">Admin Console</button>
+        <button class="tab-btn active" onclick="switchTab('auth-tab', event)">Authentication</button>
+        <button class="tab-btn" onclick="switchTab('extract-tab', event)">Extraction Tool</button>
+        <button class="tab-btn" onclick="switchTab('user-tab', event)">User Account</button>
+        <button class="tab-btn" onclick="switchTab('admin-tab', event)">Admin Console</button>
     </div>
 
     <!-- AUTHENTICATION TAB -->
@@ -416,7 +416,6 @@
     <script>
         const API_BASE = "https://service-production-50ff.up.railway.app";
 
-        // Helper function to handle response parsing and catch non-JSON/HTML errors
         async function parseJsonResponse(res) {
             const contentType = res.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
@@ -432,11 +431,13 @@
         let base64ImageData = "";
 
         // UI Helpers
-        function switchTab(tabId) {
+        function switchTab(tabId, evt) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('active');
+            }
         }
 
         function showAlert(elementId, message, isError = true) {
@@ -458,14 +459,19 @@
 
         function previewImage(event) {
             const file = event.target.files[0];
-            if (!file) return;
+            const img = document.getElementById('image-preview');
+            
+            if (!file) {
+                img.src = "";
+                img.style.display = "none";
+                base64ImageData = "";
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const img = document.getElementById('image-preview');
                 img.src = e.target.result;
                 img.style.display = 'block';
-                // Extract base64 part only
                 base64ImageData = e.target.result.split(',')[1];
             };
             reader.readAsDataURL(file);
@@ -473,7 +479,6 @@
 
         // --- API INTEGRATIONS ---
 
-        // 1. REGISTER
         async function handleRegister(e) {
             e.preventDefault();
             clearAlert('reg-alert');
@@ -496,7 +501,6 @@
             }
         }
 
-        // 2. LOGIN
         async function handleLogin(e) {
             e.preventDefault();
             clearAlert('login-alert');
@@ -518,13 +522,12 @@
                 localStorage.setItem("user_api_key", userApiKey);
 
                 showAlert('login-alert', 'Login successful!', false);
-                updateGlobalUserUI(data.email, data.tier, data.credits, data.api_key, data.access_token);
+                updateGlobalUserUI(data.email, data.tier, data.credits ?? data.credits_remaining, data.api_key, data.access_token);
             } catch (err) {
                 showAlert('login-alert', err.message, true);
             }
         }
 
-        // 3. USER STATUS
         async function fetchUserStatus() {
             clearAlert('user-alert');
             if (!jwtToken && !userApiKey) {
@@ -544,7 +547,7 @@
                 const data = await parseJsonResponse(res);
                 if (!res.ok) throw new Error(data.detail || 'Failed to fetch status');
 
-                updateGlobalUserUI(data.email, data.tier, data.credits_remaining, data.api_key, jwtToken);
+                updateGlobalUserUI(data.email, data.tier, data.credits_remaining ?? data.credits, data.api_key, jwtToken);
                 showAlert('user-alert', 'Account status updated!', false);
             } catch (err) {
                 showAlert('user-alert', err.message, true);
@@ -561,7 +564,6 @@
             document.getElementById('account-jwt').value = token ? `Bearer ${token}` : "";
         }
 
-        // 4. EXTRACTION
         async function handleExtraction() {
             clearAlert('extract-alert');
             const outputPre = document.getElementById('extract-output');
@@ -590,7 +592,7 @@
                 headers['X-API-Key'] = keyToUse;
             }
 
-            outputPre.innerText = "Processing extraction via Gemini Flash 2.5...";
+            outputPre.innerText = "Processing extraction...";
 
             try {
                 const res = await fetch(`${API_BASE}/api/extract/${taskType}`, {
@@ -605,7 +607,6 @@
                 outputPre.innerText = JSON.stringify(data, null, 2);
                 showAlert('extract-alert', 'Extraction complete!', false);
                 
-                // Refresh credit count
                 fetchUserStatus();
             } catch (err) {
                 outputPre.innerText = `Error: ${err.message}`;
@@ -613,7 +614,6 @@
             }
         }
 
-        // 5. ADMIN: GENERATE KEY
         async function handleAdminGenKey(e) {
             e.preventDefault();
             clearAlert('admin-gen-alert');
@@ -634,7 +634,6 @@
             }
         }
 
-        // 6. ADMIN: UPDATE USER
         async function handleAdminUpdateUser(e) {
             e.preventDefault();
             clearAlert('admin-update-alert');
@@ -658,7 +657,6 @@
             }
         }
 
-        // 7. ADMIN: LIST USERS
         async function handleAdminListUsers() {
             clearAlert('admin-list-alert');
             const secret = document.getElementById('admin-secret').value;
@@ -670,7 +668,7 @@
                 if (!res.ok) throw new Error(data.detail || 'Failed to fetch users');
 
                 tableBody.innerHTML = '';
-                if (data.users.length === 0) {
+                if (!data.users || data.users.length === 0) {
                     tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No users found</td></tr>';
                     return;
                 }
@@ -692,7 +690,7 @@
             }
         }
 
-        // Auto-fetch status on startup if saved key/token exists
+        // Auto-fetch status on page load if saved credentials exist
         if (jwtToken || userApiKey) {
             fetchUserStatus();
         }
