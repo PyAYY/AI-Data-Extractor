@@ -1,369 +1,240 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Extraction Micro-SaaS Control Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-6">
+import os
+import sqlite3
+import secrets
+import hashlib
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Query, Header, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from google import genai
+from instructor import from_genai
+from instructor.processing.multimodal import Image
+from pydantic import Field
 
-    <div class="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-slate-800 pb-4 gap-4">
-            <h1 class="text-2xl font-bold tracking-wide">AI Extraction <span class="text-indigo-400 text-sm">Micro-SaaS Control Panel</span></h1>
-            <div class="space-x-2">
-                <button onclick="openTab('app')" class="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-500 transition">App</button>
-                <button onclick="openTab('account')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">My Account</button>
-                <button onclick="openTab('pricing')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Buy Credits</button>
-                <button onclick="openTab('admin')" class="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition">Admin Panel</button>
-            </div>
-        </header>
+app = FastAPI()
 
-        <!-- APP TAB -->
-        <div id="tab-app" class="tab-content space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-2">Your API Key (or log in via Account tab)</label>
-                    <input type="password" id="apiKeyInput" placeholder="usr_..." onchange="checkAccountStatus()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-2">Extraction Task Type</label>
-                    <select id="taskTypeSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
-                        <option value="invoice">Invoice Parser (1 Credit)</option>
-                        <option value="receipt">Store Receipt Parser (1 Credit)</option>
-                        <option value="business-card">Business Card Scanner (1 Credit)</option>
-                    </select>
-                </div>
-            </div>
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-            <div id="accountStatusBox" class="bg-slate-950 border border-slate-800 p-4 rounded-lg flex justify-between items-center text-sm">
-                <span class="text-slate-400">Account: <strong id="accEmail" class="text-slate-200">Not Logged In</strong></span>
-                <div class="space-x-4">
-                    <span>Tier: <strong id="accTier" class="text-indigo-400">-</strong></span>
-                    <span>Credits Left: <strong id="accCredits" class="text-emerald-400">-</strong></span>
-                </div>
-            </div>
+DB_FILE = "saas_database.db"
+ADMIN_KEY = os.getenv("ADMIN_KEY", "master_secret_123")
 
-            <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Upload Document Image</label>
-                <input type="file" id="fileInput" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"/>
-            </div>
+# Initialize Gemini & Instructor Client
+ai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+instructor_client = from_genai(ai_client)
 
-            <button onclick="processExtraction()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Run AI Extraction</button>
+def init_db():
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                api_key TEXT UNIQUE NOT NULL,
+                access_token TEXT UNIQUE,
+                credits INTEGER DEFAULT 10,
+                tier TEXT DEFAULT 'free'
+            )
+        """)
+        conn.commit()
 
-            <div id="loading" class="hidden text-center text-indigo-400 animate-pulse">Processing document via Gemini Flash...</div>
+init_db()
 
-            <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Structured JSON Output</label>
-                <pre id="outputResult" class="bg-slate-950 border border-slate-800 p-4 rounded-lg text-xs font-mono text-indigo-300 h-56 overflow-y-auto"></pre>
-            </div>
-        </div>
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
 
-        <!-- MY ACCOUNT & LOGIN TAB -->
-        <div id="tab-account" class="tab-content hidden space-y-8">
-            <div id="loggedOutView" class="max-w-md mx-auto bg-slate-950 border border-slate-800 p-6 rounded-xl space-y-4">
-                <h2 class="text-xl font-semibold text-center">User Portal Authentication</h2>
-                <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">Email Address</label>
-                    <input type="email" id="authEmail" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">Password</label>
-                    <input type="password" id="authPassword" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-                <div class="flex gap-4 pt-2">
-                    <button onclick="loginUser()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition text-sm">Log In</button>
-                    <button onclick="registerUser()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 font-semibold rounded-lg transition text-sm">Register</button>
-                </div>
-                <p id="authMsg" class="text-xs text-center text-indigo-400"></p>
-            </div>
+# --- Pydantic Models ---
+class AuthRequest(BaseModel):
+    email: str
+    password: str
 
-            <div id="loggedInView" class="hidden max-w-lg mx-auto bg-slate-950 border border-slate-800 p-6 rounded-xl space-y-4">
-                <h2 class="text-xl font-semibold">Account Dashboard</h2>
-                <div class="text-sm space-y-2 text-slate-300">
-                    <p><strong>Email:</strong> <span id="dashEmail"></span></p>
-                    <p><strong>Membership Tier:</strong> <span id="dashTier" class="text-indigo-400"></span></p>
-                    <p><strong>Remaining Credits:</strong> <span id="dashCredits" class="text-emerald-400"></span></p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-400 mb-1">Your Secret API Key</label>
-                    <div class="flex gap-2">
-                        <input type="password" id="dashApiKey" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-300">
-                        <button onclick="navigator.clipboard.writeText(document.getElementById('dashApiKey').value); alert('API Key copied!');" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs">Copy</button>
-                    </div>
-                </div>
-                <button onclick="logoutUser()" class="w-full py-2 bg-rose-600/80 hover:bg-rose-600 font-semibold rounded-lg transition text-sm">Log Out</button>
-            </div>
-        </div>
+class UpdateUserRequest(BaseModel):
+    admin_secret: str
+    target_api_key: str
+    credits: int
+    tier: str
 
-        <!-- PRICING TAB -->
-        <div id="tab-pricing" class="tab-content hidden space-y-6 text-center">
-            <h2 class="text-xl font-semibold">Top Up Credits & Subscriptions</h2>
-            <p class="text-slate-400 text-sm">Unlock instant API access and automated credit top-ups.</p>
-            <div class="bg-slate-950 border border-slate-800 p-6 rounded-xl max-w-sm mx-auto">
-                <span class="text-3xl font-bold">$29</span><span class="text-slate-400">/month</span>
-                <ul class="text-left text-sm text-slate-300 my-6 space-y-2">
-                    <li>✓ 250 Extraction Credits /mo</li>
-                    <li>✓ Access to All Parsing Endpoints</li>
-                    <li>✓ Automated Key Provisioning</li>
-                </ul>
-                <a href="https://buy.stripe.com/your_stripe_link_placeholder" target="_blank" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-lg transition">Subscribe via Stripe</a>
-            </div>
-        </div>
+class ExtractionRequest(BaseModel):
+    image_base64: str
 
-        <!-- ADMIN TAB -->
-        <div id="tab-admin" class="tab-content hidden space-y-6">
-            <h2 class="text-xl font-semibold">Master Admin Controls</h2>
-            <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Master Admin Secret</label>
-                <input type="password" id="adminSecretInput" placeholder="None" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
-            </div>
-            
-            <div class="flex gap-4">
-                <button onclick="loadAdminUsers()" class="flex-1 py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-lg transition">Refresh User Database</button>
-                <button onclick="generateNewKeyAdmin()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 font-semibold rounded-lg transition">Create New Key</button>
-            </div>
+# --- Response Models for Extraction ---
+class InvoiceSchema(BaseModel):
+    vendor_name: str = Field(description="Name of the company issuing the invoice")
+    invoice_number: Optional[str] = Field(description="Invoice tracking number")
+    total_amount: float = Field(description="Total monetary amount due")
+    due_date: Optional[str] = Field(description="Payment due date")
 
-            <div class="overflow-x-auto border border-slate-800 rounded-lg">
-                <table class="w-full text-left text-xs text-slate-300">
-                    <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-                        <tr>
-                            <th class="p-3">Email</th>
-                            <th class="p-3">API Key</th>
-                            <th class="p-3">Tier</th>
-                            <th class="p-3">Credits</th>
-                            <th class="p-3">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="adminUserTableBody">
-                        <tr><td colspan="5" class="p-4 text-center text-slate-500">Enter admin secret and click Refresh User Database.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+class ReceiptSchema(BaseModel):
+    merchant_name: str = Field(description="Store or merchant name")
+    transaction_date: Optional[str] = Field(description="Date of purchase")
+    total_paid: float = Field(description="Total amount paid")
+    items_purchased: list[str] = Field(description="List of items bought")
 
-    <script>
-        // Update this to match your production backend URL if deployed externally (e.g., Railway)
-        const API_URL = "https://service-production-50ff.up.railway.app"; 
+class BusinessCardSchema(BaseModel):
+    full_name: str = Field(description="Individual's full name")
+    job_title: Optional[str] = Field(description="Professional title or role")
+    company_name: Optional[str] = Field(description="Company or organization name")
+    email: Optional[str] = Field(description="Contact email address")
+    phone_number: Optional[str] = Field(description="Contact phone number")
 
-        function openTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-            if(tabName === 'app') checkAccountStatus();
-            if(tabName === 'account') checkLocalSession();
-        }
+TASK_SCHEMAS = {
+    "invoice": (InvoiceSchema, "Extract structured details from this invoice image."),
+    "receipt": (ReceiptSchema, "Extract structured details from this store receipt image."),
+    "business-card": (BusinessCardSchema, "Extract contact information from this business card image.")
+}
 
-        async function registerUser() {
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-            const msg = document.getElementById('authMsg');
-            
-            try {
-                const res = await fetch(`${API_URL}/api/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    msg.textContent = "Registration successful! You can now log in.";
-                    document.getElementById('apiKeyInput').value = data.api_key;
-                } else {
-                    msg.textContent = data.detail || "Registration failed";
+# --- Auth & User Dependency Helpers ---
+def get_user_from_headers(authorization: Optional[str] = Header(None), x_api_key: Optional[str] = Header(None)):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization.split(" ")[1]
+            c.execute("SELECT * FROM users WHERE access_token = ?", (token,))
+        elif x_api_key:
+            c.execute("SELECT * FROM users WHERE api_key = ?", (x_api_key,))
+        else:
+            raise HTTPException(status_code=401, detail="Missing authentication credentials (API Key or Bearer Token).")
+        
+        user = c.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials.")
+        return dict(user)
+
+# --- Authentication Endpoints ---
+@app.post("/api/auth/register")
+def register_user(payload: AuthRequest):
+    email = payload.email.lower().strip()
+    pwd_hash = hash_password(payload.password)
+    api_key = f"usr_{secrets.token_hex(16)}"
+    
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            c = conn.cursor()
+            c.execute("INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, 10, 'free')",
+                      (email, pwd_hash, api_key))
+            conn.commit()
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="User with this email already exists.")
+    
+    return {"status": "success", "api_key": api_key, "message": "Registered successfully"}
+
+@app.post("/api/auth/login")
+def login_user(payload: AuthRequest):
+    email = payload.email.lower().strip()
+    pwd_hash = hash_password(payload.password)
+    
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE email = ? AND password_hash = ?", (email, pwd_hash))
+        user = c.fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=400, detail="Invalid email or password.")
+        
+        access_token = secrets.token_hex(32)
+        c.execute("UPDATE users SET access_token = ? WHERE id = ?", (access_token, user["id"]))
+        conn.commit()
+        
+    return {
+        "status": "success",
+        "access_token": access_token,
+        "api_key": user["api_key"]
+    }
+
+@app.get("/api/user/status")
+def get_user_status(user: dict = Depends(get_user_from_headers)):
+    return {
+        "email": user["email"],
+        "tier": user["tier"],
+        "credits_remaining": user["credits"]
+    }
+
+# --- AI Extraction Endpoint ---
+@app.post("/api/extract/{task_type}")
+def process_extraction(task_type: str, payload: ExtractionRequest, user: dict = Depends(get_user_from_headers)):
+    if task_type not in TASK_SCHEMAS:
+        raise HTTPException(status_code=400, detail="Invalid task type specified.")
+    
+    if user["credits"] <= 0:
+        raise HTTPException(status_code=402, detail="Insufficient credits. Please top up your account.")
+    
+    schema, prompt_text = TASK_SCHEMAS[task_type]
+    
+    try:
+        response = instructor_client.chat.completions.create(
+            model="gemini-2.5-flash",
+            response_model=schema,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        prompt_text,
+                        Image.from_base64(payload.image_base64),
+                    ]
                 }
-            } catch(e) { msg.textContent = "Network error"; }
-        }
+            ]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Extraction failed: {str(e)}")
+    
+    # Deduct credit
+    new_credits = user["credits"] - 1
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("UPDATE users SET credits = ? WHERE id = ?", (new_credits, user["id"]))
+        conn.commit()
+        
+    return response
 
-        async function loginUser() {
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-            const msg = document.getElementById('authMsg');
-            
-            try {
-                const res = await fetch(`${API_URL}/api/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    localStorage.setItem('saas_token', data.access_token);
-                    localStorage.setItem('saas_apikey', data.api_key);
-                    document.getElementById('apiKeyInput').value = data.api_key;
-                    msg.textContent = "Logged in successfully!";
-                    checkLocalSession();
-                } else {
-                    msg.textContent = data.detail || "Login failed";
-                }
-            } catch(e) { msg.textContent = "Network error"; }
-        }
+# --- Admin Endpoints ---
+@app.get("/api/admin/users")
+def admin_list_users(admin_secret: str = Query(...)):
+    if admin_secret != ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        c.execute("SELECT email, api_key, tier, credits FROM users")
+        users = [dict(row) for row in c.fetchall()]
+    return {"users": users}
 
-        function checkLocalSession() {
-            const token = localStorage.getItem('saas_token');
-            const apiKey = localStorage.getItem('saas_apikey');
-            if(token && apiKey) {
-                document.getElementById('loggedOutView').classList.add('hidden');
-                document.getElementById('loggedInView').classList.remove('hidden');
-                document.getElementById('dashApiKey').value = apiKey;
-                fetchUserDashboard(token);
-            } else {
-                document.getElementById('loggedOutView').classList.remove('hidden');
-                document.getElementById('loggedInView').classList.add('hidden');
-            }
-        }
+@app.post("/api/admin/user/update")
+def admin_update_user(payload: UpdateUserRequest):
+    if payload.admin_secret != ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
+        c = conn.cursor()
+        c.execute("UPDATE users SET tier = ?, credits = ? WHERE api_key = ?", (payload.tier, payload.credits, payload.target_api_key))
+        conn.commit()
+        if c.rowcount == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "success", "message": "User updated successfully"}
 
-        async function fetchUserDashboard(token) {
-            try {
-                const res = await fetch(`${API_URL}/api/user/status`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    document.getElementById('dashEmail').textContent = data.email;
-                    document.getElementById('dashTier').textContent = data.tier;
-                    document.getElementById('dashCredits').textContent = data.credits_remaining;
-                } else {
-                    logoutUser();
-                }
-            } catch(e) { console.error("Session check failed"); }
-        }
-
-        function logoutUser() {
-            localStorage.removeItem('saas_token');
-            localStorage.removeItem('saas_apikey');
-            checkLocalSession();
-        }
-
-        async function checkAccountStatus() {
-            const apiKey = document.getElementById('apiKeyInput').value;
-            if(!apiKey) return;
-            try {
-                const res = await fetch(`${API_URL}/api/user/status`, {
-                    headers: { 'X-API-Key': apiKey }
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    document.getElementById('accEmail').textContent = data.email;
-                    document.getElementById('accTier').textContent = data.tier;
-                    document.getElementById('accCredits').textContent = data.credits_remaining;
-                }
-            } catch(e) { console.error("Could not fetch user status"); }
-        }
-
-        async function processExtraction() {
-            const apiKey = document.getElementById('apiKeyInput').value || localStorage.getItem('saas_apikey');
-            const token = localStorage.getItem('saas_token');
-            const taskType = document.getElementById('taskTypeSelect').value;
-            const fileInput = document.getElementById('fileInput').files[0];
-            const outputBox = document.getElementById('outputResult');
-            const loading = document.getElementById('loading');
-
-            if (!apiKey && !token) {
-                alert("Please log in or provide an API key.");
-                return;
-            }
-            if (!fileInput) {
-                alert("Please select a document image.");
-                return;
-            }
-
-            loading.classList.remove('hidden');
-            outputBox.textContent = "";
-
-            const reader = new FileReader();
-            reader.readAsDataURL(fileInput);
-            reader.onload = async () => {
-                const base64String = reader.result.split(',')[1];
-                let headers = { 'Content-Type': 'application/json' };
-                if(token) {
-                    headers['Authorization'] = `Bearer ${token}`;
-                } else {
-                    headers['X-API-Key'] = apiKey;
-                }
-
-                try {
-                    const response = await fetch(`${API_URL}/api/extract/${taskType}`, {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({ image_base64: base64String })
-                    });
-                    
-                    const data = await response.json();
-                    loading.classList.add('hidden');
-                    if (response.ok) {
-                        outputBox.textContent = JSON.stringify(data, null, 2);
-                        checkAccountStatus(); 
-                    } else {
-                        outputBox.textContent = `Error (${response.status}): ${data.detail || 'Failed'}`;
-                    }
-                } catch (err) {
-                    loading.classList.add('hidden');
-                    outputBox.textContent = `Network Error: Could not reach backend server.`;
-                }
-            };
-        }
-
-        async function loadAdminUsers() {
-            const secret = document.getElementById('adminSecretInput').value;
-            const tbody = document.getElementById('adminUserTableBody');
-            try {
-                const res = await fetch(`${API_URL}/api/admin/users?admin_secret=${encodeURIComponent(secret)}`);
-                const data = await res.json();
-                if(res.ok) {
-                    tbody.innerHTML = '';
-                    data.users.forEach(u => {
-                        tbody.innerHTML += `
-                            <tr class="border-b border-slate-800">
-                                <td class="p-3">${u.email}</td>
-                                <td class="p-3 font-mono text-slate-400">${u.api_key.substring(0, 10)}...</td>
-                                <td class="p-3"><input type="text" id="tier_${u.api_key}" value="${u.tier}" class="bg-slate-900 border border-slate-700 p-1 rounded w-20"></td>
-                                <td class="p-3"><input type="number" id="credits_${u.api_key}" value="${u.credits}" class="bg-slate-900 border border-slate-700 p-1 rounded w-20"></td>
-                                <td class="p-3"><button onclick="updateUser('${u.api_key}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white">Save</button></td>
-                            </tr>
-                        `;
-                    });
-                } else {
-                    alert(data.detail || "Unauthorized");
-                }
-            } catch(e) { alert("Admin connection failed"); }
-        }
-
-        async function updateUser(apiKey) {
-            const secret = document.getElementById('adminSecretInput').value;
-            const newTier = document.getElementById(`tier_${apiKey}`).value;
-            const newCredits = parseInt(document.getElementById(`credits_${apiKey}`).value);
-
-            const res = await fetch(`${API_URL}/api/admin/user/update`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ admin_secret: secret, target_api_key: apiKey, credits: newCredits, tier: newTier })
-            });
-            const data = await res.json();
-            if(res.ok) {
-                alert("User successfully updated!");
-                loadAdminUsers();
-            } else {
-                alert(data.detail || "Update failed");
-            }
-        }
-
-        async function generateNewKeyAdmin() {
-            const secret = document.getElementById('adminSecretInput').value;
-            const email = prompt("Enter customer email for new key:", "client@example.com");
-            if(!email) return;
-
-            const res = await fetch(`${API_URL}/api/admin/generate-key?admin_secret=${encodeURIComponent(secret)}&email=${encodeURIComponent(email)}&credits=100&tier=pro`, {
-                method: 'POST'
-            });
-            const data = await res.json();
-            if(res.ok) {
-                alert(`New API Key generated successfully:\n${data.api_key}`);
-                loadAdminUsers();
-            } else {
-                alert(data.detail || "Failed to generate key");
-            }
-        }
-    </script>
-</body>
-</html>
+@app.post("/api/admin/generate-key")
+def admin_generate_key(admin_secret: str = Query(...), email: str = Query(...), credits: int = Query(100), tier: str = Query("pro")):
+    if admin_secret != ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    new_api_key = f"usr_{secrets.token_hex(16)}"
+    hashed_pw = hash_password("defaultpassword123")
+    
+    try:
+        with sqlite3.connect(DB_FILE, check_same_thread=False) as conn:
+            c = conn.cursor()
+            c.execute("INSERT INTO users (email, password_hash, api_key, credits, tier) VALUES (?, ?, ?, ?, ?)",
+                      (email.lower().strip(), hashed_pw, new_api_key, credits, tier))
+            conn.commit()
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="User with this email already exists.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        
+    return {"status": "success", "api_key": new_api_key, "email": email, "credits": credits, "tier": tier}
